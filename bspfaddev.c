@@ -48,11 +48,6 @@ BOOL BspHasLaser(void)
     return TRUE;
 }
 
-BOOL BspHasTorch(void)
-{
-    return TRUE;
-}
-
 BOOL BspHasDigitalIO(void)
 {
     return FALSE;
@@ -61,11 +56,6 @@ BOOL BspHasDigitalIO(void)
 BOOL BspHas5VEnable(void)
 {
     return TRUE;
-}
-
-BOOL BspHasLCDActive(void)
-{
-    return FALSE;
 }
 
 BOOL BspHasHdmi(void)
@@ -83,34 +73,14 @@ BOOL BspHas7173(void)
     return FALSE;
 }
 
-BOOL BspHasCooler(void)
-{
-    return FALSE;
-}
-
-BOOL BspHasModeWheel(void)
-{
-    return FALSE;
-}
-
 BOOL BspHasBuzzer(void)
 {
     return TRUE;
 }
 
-BOOL BspHasIOPortLaser(void)
-{
-    return FALSE;
-}
-
 BOOL BspHasKpBacklight(void)
 {
     return TRUE;
-}
-
-BOOL BspHasTruckCharger(void)
-{
-    return FALSE;
 }
 
 #ifdef NOT_YET

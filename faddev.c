@@ -214,12 +214,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 
         case IOCTL_SET_APP_EVENT:
-			LOCK(pInfo);
-			if (TRUE == setLaserEvent(pInfo, (TCHAR *)pUserBuf))
-			{
-				dwErr = ERROR_SUCCESS;
-			}
-			UNLOCK(pInfo);
+			dwErr = ERROR_SUCCESS;
             break;
 
 #ifdef NOT_YET
@@ -558,7 +553,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 #endif
 
 		default:
-			pr_err("FAD: Unsupported IOCTL code %lu\n", Ioctl);
+			pr_err("FAD: Unsupported IOCTL code %lX\n", Ioctl);
 			dwErr = ERROR_NOT_SUPPORTED;
 			break;
     }

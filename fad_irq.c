@@ -21,6 +21,7 @@
 #include "i2cdev.h"
 #include "fad_internal.h"
 #include <linux/irq.h>
+#include <linux/platform_device.h>
 
 // Internal function prototypes
 irqreturn_t fadLaserIST(int irq, void *dev_id);
@@ -36,7 +37,7 @@ BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 	DWORD ret;
 
 	ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
-					  IRQF_TRIGGER_HIGH, "LaserON", pInfo);
+					  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "LaserON", pInfo);
 
 	if (ret != 0)
         pr_err("Failed to request Laser IRQ (%ld)\n", ret);
@@ -165,28 +166,11 @@ BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
 	return TRUE;
 }
 
-BOOL setLaserEvent(PFAD_HW_INDEP_INFO pInfo, TCHAR* tcName)
+DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo)
 {
-#ifdef NOT_YET
-	if (pInfo->hAppEvent != NULL)
-	{
-		CloseHandle(pInfo->hAppEvent);
-		pInfo->hAppEvent = NULL;
-	}
-	if (0 < wcslen((wchar_t *)tcName))
-	{
-		pInfo->hAppEvent = CreateEvent(NULL, FALSE, FALSE, tcName);
- 		if (pInfo->hAppEvent != NULL)
-		{
-			SetEvent(pInfo->hAppEvent);
-		}
-		else
-		{
-			return FALSE;
-		}
-	}	
-#endif
-	return TRUE;
+	kobject_uevent(&pInfo->pLinuxDevice->dev.kobj, KOBJ_ADD);
+
+	return ERROR_SUCCESS;
 }
 
 irqreturn_t fadHdmiIST(int irq, void *dev_id)
@@ -205,10 +189,7 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
     PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
     static BOOL         bWaitForNeg = FALSE;
 
-	if (NULL != pInfo->hAppEvent)
-	{
-//		SetEvent(pInfo->hAppEvent);
-	}
+    ApplicationEvent(pInfo);
 	if (bWaitForNeg)
 	{
 //		SetInterrupt(PORT_DIGIO, PIN_DIGIN_1, TRUE);
@@ -228,10 +209,7 @@ irqreturn_t fadDigIN2IST(int irq, void *dev_id)
     PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
     static BOOL         bWaitForNeg = FALSE;
 
-	if (NULL != pInfo->hAppEvent)
-	{
-//		SetEvent(pInfo->hAppEvent);
-	}
+    ApplicationEvent(pInfo);
 	if (bWaitForNeg)
 	{
 //		SetInterrupt(PORT_DIGIO, PIN_DIGIN_2, TRUE);
@@ -251,10 +229,7 @@ irqreturn_t fadDigIN3IST(int irq, void *dev_id)
     PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
     static BOOL         bWaitForNeg = FALSE;
 
-	if (NULL != pInfo->hAppEvent)
-	{
-//		SetEvent(pInfo->hAppEvent);
-	}
+    ApplicationEvent(pInfo);
 	if (bWaitForNeg)
 	{
 //		SetInterrupt(PORT_DIGIO, PIN_DIGIN_3, TRUE);
@@ -274,18 +249,15 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
     PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
     static BOOL         bWaitForNeg;
 
-	if (NULL != pInfo->hAppEvent)
-	{
-//		SetEvent(pInfo->hAppEvent);
-	}
+    ApplicationEvent(pInfo);
 	if (bWaitForNeg)
 	{
-		set_irq_type(IOMUX_TO_IRQ(LASER_ON), IRQF_TRIGGER_HIGH);
+		set_irq_type(IOMUX_TO_IRQ(LASER_ON), IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
 		bWaitForNeg = FALSE;
 	}
 	else
 	{
-		set_irq_type(IOMUX_TO_IRQ(LASER_ON), IRQF_TRIGGER_LOW);
+		set_irq_type(IOMUX_TO_IRQ(LASER_ON), IRQF_TRIGGER_LOW | IRQF_ONESHOT);
 		bWaitForNeg = TRUE;
 	}
 

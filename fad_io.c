@@ -93,11 +93,12 @@ static BOOL InitI2CIoport (PFAD_HW_INDEP_INFO pInfo)
     if (res > 0)
     {
     	msgs[0].len = 2;
+    	msgs[0].buf = buf;
         buf[1] = buf[0] & ~((1 << VCM_LED_EN) |
                             (1 << LASER_SWITCH_ON) |
                             (1 << FOCUS_POWER_EN) |
                             (1 << LASER_SOFT_ON));  
-        pr_err("FAD: IOPORT %02X -> %02X\n", buf[0], buf[1]);
+//        pr_err("FAD: IOPORT %02X -> %02X\n", buf[0], buf[1]);
         buf[0] = 3;
     	res = i2c_transfer(pInfo->hI2C1, msgs, 1);
     }
@@ -146,12 +147,15 @@ BOOL SetI2CIoport (PFAD_HW_INDEP_INFO pInfo, UCHAR bit, BOOL value)
     if (res > 0)
     {
     	msgs[0].len = 2;
+    	msgs[0].buf = buf;
         buf[1] = buf[0];  // Initial value before changes
         if (value)
             buf[1] |= (1 << bit);
         else
             buf[1] &= ~(1 << bit);
+//        pr_err("FAD: IO Set %02X -> %02X\n", buf[0], buf[1]);
         buf[0] = 1;       // Set output value
+
     	res = i2c_transfer(pInfo->hI2C1, msgs, 1);
     }
 
@@ -256,7 +260,6 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
 
 void HandleHdmiInterrupt(struct work_struct *hdmiWork)
 {
-//	HANDLE      hEvent;
 	UCHAR		val;
 	static BOOL bLastConnected;
 	BOOL        bNowConnected;
@@ -264,8 +267,6 @@ void HandleHdmiInterrupt(struct work_struct *hdmiWork)
 	PFAD_HW_INDEP_INFO pInfo = container_of(hdmiWork, FAD_HW_INDEP_INFO, hdmiWork);
 
     pr_err("HandleHdmiInterrupt\n");
-
-//	hEvent = CreateEvent(NULL, FALSE, FALSE, TEXT("HdmiChange"));
 
 	// Clear interrupt register
 	readHdmiPhy(pInfo, HDMI_REG_IRQ, &val);
@@ -282,7 +283,7 @@ void HandleHdmiInterrupt(struct work_struct *hdmiWork)
 			initHdmi(pInfo);
 		}
 		bLastConnected = bNowConnected;
-//		SetEvent(hEvent);
+	    ApplicationEvent(pInfo);
 	}
 
     pr_err("HDMI state = %d\n", bNowConnected);
@@ -679,4 +680,5 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT
     // RETAILMSG(1, (_T("GetKeypadSubjBacklight %x\r\n"),pBacklight->subjectiveBacklight));
     return ERROR_SUCCESS;
 }
+
 

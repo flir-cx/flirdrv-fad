@@ -57,7 +57,6 @@ typedef struct __FAD_HW_INDEP_INFO {
     struct semaphore	    semIOport;
     struct i2c_adapter 		*hI2C1;
     struct i2c_adapter 		*hI2C2;
-    HANDLE                  hAppEvent;          // Handle to application notification event
     BOOL                    bLaserEnable;       // True when laser enable active
     PVOID                   pWdog;              // Pointer to Watchdog CPU registers
     UINT8 					Keypad_bl_low;
@@ -86,26 +85,17 @@ void BspGetSubjBackLightLevel(UINT8* pLow, UINT8* pMedium, UINT8* pHigh);
 
 BOOL BspSoftwareControlledLaser(void);
 BOOL BspHasLaser(void);
-BOOL BspHasLCDActive(void);
 BOOL BspHasHdmi(void);
 BOOL BspHasGPS(void);
 BOOL BspHas7173(void);
-BOOL BspHasCooler(void);
-BOOL BspHasModeWheel(void);
-BOOL BspHasTorch(void);
 BOOL BspHas5VEnable(void);
 BOOL BspHasDigitalIO(void);
 BOOL BspHasKAKALed(void);
 BOOL BspHasBuzzer(void);
-BOOL BspHasIOPortLaser(void);
-BOOL BspHasIOPortTorch(void);
 BOOL BspHasSimpleIOPortTorch(void);
-BOOL BspHasIOPortADuC(void);
-BOOL BspHasADuC(void);
 BOOL BspHasFocusTrig(void);
 BOOL BspHasPleora(void);
 BOOL BspHasKpBacklight(void);
-BOOL BspHasTruckCharger(void);
 
 int BspGet7173I2cBus(void);
 DWORD getLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED *pLedData);
@@ -122,7 +112,7 @@ void BspFadPowerDown(BOOL down);
 BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
 BOOL InitHdmiIrq(PFAD_HW_INDEP_INFO pInfo);
 BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
-BOOL setLaserEvent(PFAD_HW_INDEP_INFO pInfo, TCHAR* tcName);
+DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 FADDEVIOCTLTCPOWERSTATES GetTcState(void);
