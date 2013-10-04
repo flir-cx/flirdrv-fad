@@ -118,6 +118,7 @@ DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo);
 FADDEVIOCTLTCPOWERSTATES GetTcState(void);
 void HandleHdmiInterrupt(struct work_struct *hdmiWork);
 void initHW(PFAD_HW_INDEP_INFO pInfo);
+void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
 void resetPT1000(void);
 void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);

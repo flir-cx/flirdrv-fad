@@ -147,7 +147,10 @@ static void __devexit FAD_Deinit(void)
     // if the device is running, stop it
     if (gpDev != NULL)
     {
-        unregister_chrdev_region(gpDev->fad_dev, 1);
+    	CleanupHW(gpDev);
+        i2c_put_adapter(gpDev->hI2C1);
+        i2c_put_adapter(gpDev->hI2C2);
+    	unregister_chrdev_region(gpDev->fad_dev, 1);
     	platform_device_unregister(gpDev->pLinuxDevice);
        	kfree(gpDev);
 		gpDev = NULL;

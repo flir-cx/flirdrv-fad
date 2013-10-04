@@ -72,11 +72,8 @@ static BOOL InitI2CIoport (PFAD_HW_INDEP_INFO pInfo)
     int res;
     UCHAR buf[2];
     UCHAR cmd;
-    struct i2c_adapter *adap;
 
     LOCK_IOPORT(pInfo);
-
-    adap = i2c_get_adapter(0);
 
     msgs[0].addr = IOPORT_I2C_ADDR >> 1;
 	msgs[0].flags = 0;
@@ -102,8 +99,6 @@ static BOOL InitI2CIoport (PFAD_HW_INDEP_INFO pInfo)
         buf[0] = 3;
     	res = i2c_transfer(pInfo->hI2C1, msgs, 1);
     }
-
-    i2c_put_adapter(adap);
 
     UNLOCK_IOPORT(pInfo);
 
@@ -257,6 +252,26 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
 
 }
 
+void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
+{
+    // Laser ON
+    if (BspHasLaser())
+	{
+    	free_irq(gpio_to_irq(LASER_ON), pInfo);
+    	gpio_free(LASER_ON);
+    }
+
+	if (BspHas5VEnable())
+	{
+    	gpio_free(PIN_3V6A_EN);
+	}
+
+    if (BspHasHdmi())
+	{
+    	free_irq(gpio_to_irq(I2C2_HDMI_INT), pInfo);
+    	gpio_free(I2C2_HDMI_INT);
+	}
+}
 
 void HandleHdmiInterrupt(struct work_struct *hdmiWork)
 {
