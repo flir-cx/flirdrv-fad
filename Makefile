@@ -4,15 +4,22 @@
 #
 # Also modify 'KERNELDIR' to fit your system
 
+ifeq ($(KERNEL_SRC),)
+	KERNEL_SRC ?= ~/linux/flir-yocto/build_pico/tmp-eglibc/work/neco-oe-linux-gnueabi/linux-boundary/3.0.35-r0/git
+endif
+
 EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include
 
 	obj-m := fad.o
 	fad-objs += faddev.o
-	fad-objs += fad_io.o
 	fad-objs += fad_irq.o
-	fad-objs += bspfaddev.o
-	KERNELDIR ?= /home/pfitger/linux-2.6-imx
+	fad-objs += fad_pico.o
+	fad-objs += fad_neco.o
 	PWD := $(shell pwd)
-default:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+all: 
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) clean
 

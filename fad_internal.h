@@ -64,6 +64,40 @@ typedef struct __FAD_HW_INDEP_INFO {
     UINT8 					Keypad_bl_high;
     struct work_struct 		hdmiWork;
     struct workqueue_struct *hdmiIrqQueue;
+
+    BOOL 		bHasLaser;
+    BOOL 		bHasHdmi;
+    BOOL 		bHasGPS;
+    BOOL 		bHas7173;
+    BOOL 		bHas5VEnable;
+    BOOL 		bHasDigitalIO;
+    BOOL 		bHasKAKALed;
+    BOOL 		bHasBuzzer;
+    BOOL 		bHasKpBacklight;
+    BOOL 		bHasSoftwareControlledLaser;
+
+    DWORD (*pGetKAKALedState) (FADDEVIOCTLLED* pLED);
+    DWORD (*pSetKAKALedState) (FADDEVIOCTLLED* pLED);
+    void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
+    void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *, BOOL LaserStatus);
+    void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLLASER pLaserStatus);
+    void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);
+    void (*pGetHdmiStatus) (struct __FAD_HW_INDEP_INFO * pInfo, PFADDEVIOCTLHDMI pHdmiStatus);
+    void (*pSetBuzzerFrequency) (USHORT usFreq, UCHAR ucPWM);
+    void (*pSetHdmiI2cState) (DWORD state);
+    void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo, BOOL bEnable);
+    BOOL (*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo);
+    DWORD (*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
+    DWORD (*pSetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
+    DWORD (*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+    DWORD (*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+    BOOL (*pSetGPSEnable) (BOOL enabled);
+    BOOL (*pGetGPSEnable) (BOOL *enabled);
+    void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * pInfo, UINT32 Timeout);
+    BOOL (*pWdogService) (struct __FAD_HW_INDEP_INFO * pInfo);
+    void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * pInfo);
+    void (*pHandleHdmiInterrupt) (struct work_struct *hdmiWork);
+
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
 // Driver serialization macros
@@ -73,41 +107,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 #define	LOCK_IOPORT(pd)		down(&pd->semIOport)
 #define	UNLOCK_IOPORT(pd)	up(&pd->semIOport)
 
-// Function prototypes - bspfaddev.c (BSP specific functions)
-void BspGetIOPortLaserSetting(BYTE* pLaserSwitchOnIOAddr, BYTE* pLaserSwitchOn, 
-                              BYTE* pLaserSoftOnIOAddr, BYTE* pLaserSoftOn,
-                              BYTE* pLaserOnIOAddr, BYTE* LaserOn,
-                              BYTE* pLaserI2cAddrKeyb, BYTE* pLaserSwPressed);
-
-BOOL BspNeedIOExpanderInit(void);
-void BspIOExpanderValues(USHORT* pAddr, USHORT* pInputs, USHORT* pOutputValues);
-void BspGetSubjBackLightLevel(UINT8* pLow, UINT8* pMedium, UINT8* pHigh);
-
-BOOL BspSoftwareControlledLaser(void);
-BOOL BspHasLaser(void);
-BOOL BspHasHdmi(void);
-BOOL BspHasGPS(void);
-BOOL BspHas7173(void);
-BOOL BspHas5VEnable(void);
-BOOL BspHasDigitalIO(void);
-BOOL BspHasKAKALed(void);
-BOOL BspHasBuzzer(void);
-BOOL BspHasSimpleIOPortTorch(void);
-BOOL BspHasFocusTrig(void);
-BOOL BspHasPleora(void);
-BOOL BspHasKpBacklight(void);
-
-int BspGet7173I2cBus(void);
-DWORD getLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED *pLedData);
-DWORD setLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED *pLedData);
-DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
-DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
-DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-
-DWORD WINAPI fadFlashLed(PVOID pContext);
-void BspFadPowerDown(BOOL down);
-
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
 BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
 BOOL InitHdmiIrq(PFAD_HW_INDEP_INFO pInfo);
@@ -115,33 +114,7 @@ BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
 DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
-FADDEVIOCTLTCPOWERSTATES GetTcState(void);
-void HandleHdmiInterrupt(struct work_struct *hdmiWork);
-void initHW(PFAD_HW_INDEP_INFO pInfo);
-void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
-void resetPT1000(void);
-void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
-void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
-void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
-void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
-void getLCDStatus(PFADDEVIOCTLLCD pLCDStatus);
-void getHdmiStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLHDMI pHdmiStatus);
-void trigPositionSync(void);
-BOOL setGPSEnable(BOOL enabled);
-BOOL getGPSEnable(BOOL *enabled);
-BOOL initGPSControl(PFAD_HW_INDEP_INFO pInfo);
-void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout);
-BOOL WdogService(PFAD_HW_INDEP_INFO pInfo);
-void setHdmiI2cState (DWORD state);
-void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable);
-BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo);
-void SetHDMIEnable(BOOL bEnable);
-void Set5VEnable(BOOL bEnable);
-void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
-DWORD setL2cache(DWORD activate);
-DWORD getCPUinfo(DWORD *pOut);
-DWORD writeHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR value);
-DWORD readHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR* pValue);
-void initHdmi(PFAD_HW_INDEP_INFO pInfo);
+void SetupMX51(PFAD_HW_INDEP_INFO pInfo);
+void SetupMX6S(PFAD_HW_INDEP_INFO pInfo);
 
 #endif

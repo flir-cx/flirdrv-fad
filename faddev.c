@@ -16,7 +16,7 @@
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
 
-#include "../fvd/flir_kernel_os.h"
+#include "flir_kernel_os.h"
 #include "faddev.h"
 #include "i2cdev.h"
 #include "fad_internal.h"
@@ -26,7 +26,7 @@
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 
 // Function prototypes
-static int FAD_IOControl(struct inode *inode, struct file *filep,
+static long FAD_IOControl(struct file *filep,
 		unsigned int cmd, unsigned long arg);
 static ssize_t dummyWrite (struct file *filp, const char __user  *buf, size_t count, loff_t *f_pos);
 static ssize_t dummyRead (struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
@@ -38,18 +38,12 @@ static PFAD_HW_INDEP_INFO gpDev;
 static struct file_operations fad_fops =
 {
 		.owner = THIS_MODULE,
-		.ioctl = FAD_IOControl,
+//		.ioctl = FAD_IOControl,
+		.unlocked_ioctl = FAD_IOControl,
 		.write = dummyWrite,
 		.read = dummyRead,
 		.open = dummyOpen,
 		.release = dummyRelease,
-};
-
-static struct resource fad_resources[] = {
-	{
-		.start = MXC_INT_UART5,
-		.flags = IORESOURCE_IRQ,
-	},
 };
 
 // Code
@@ -92,8 +86,6 @@ static int __init FAD_Init(void)
     	pr_err("Error adding allocating device\n");
         return -4;
     }
-    platform_device_add_resources(gpDev->pLinuxDevice, fad_resources,
-    							  ARRAY_SIZE(fad_resources));
     platform_device_add(gpDev->pLinuxDevice);
 	pr_err("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev), MINOR(gpDev->fad_dev));
 
@@ -101,16 +93,16 @@ static int __init FAD_Init(void)
     sema_init(&gpDev->semDevice, 1);
     sema_init(&gpDev->semIOport, 1);
 
-    gpDev->hI2C1 = i2c_get_adapter(0);
-    gpDev->hI2C2 = i2c_get_adapter(1);
+	// Init hardware
+    if (cpu_is_mx51())
+    	SetupMX51(gpDev);
+    else
+    	SetupMX6S(gpDev);
 
     pr_err("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
-	// Init hardware
-	initHW(gpDev);
-
     // Set up Laser IRQ
-    if (BspHasLaser())
+    if (gpDev->bHasLaser)
     {
         if (InitLaserIrq(gpDev) == FALSE)
         {
@@ -119,7 +111,7 @@ static int __init FAD_Init(void)
     }
 
     // Set up Digital I/O IRQ
-	if (BspHasDigitalIO())
+	if (gpDev->bHasDigitalIO)
     {
         if (InitDigitalIOIrq(gpDev) == FALSE)
         {
@@ -128,7 +120,7 @@ static int __init FAD_Init(void)
     }
 
 	// Set up HDMI Active IRQ
-    if (BspHasHdmi())
+    if (gpDev->bHasHdmi)
     {
         if (InitHdmiIrq(gpDev) == FALSE)
         {
@@ -147,7 +139,7 @@ static void __devexit FAD_Deinit(void)
     // if the device is running, stop it
     if (gpDev != NULL)
     {
-    	CleanupHW(gpDev);
+    	gpDev->pCleanupHW(gpDev);
         i2c_put_adapter(gpDev->hI2C1);
         i2c_put_adapter(gpDev->hI2C2);
     	unregister_chrdev_region(gpDev->fad_dev, 1);
@@ -187,30 +179,30 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 {
     DWORD  dwErr = ERROR_INVALID_PARAMETER;
 //    static ULONG ulWdogTime = 5000;    // 5 seconds
-//    static BOOL bGPSEnable = FALSE;
+    static BOOL bGPSEnable = FALSE;
 
     switch (Ioctl) 
 	{
 		case IOCTL_FAD_SET_LASER_STATUS:
-            if (!BspHasLaser())
+            if (!pInfo->bHasLaser)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
             {
 			    LOCK(pInfo);
                 pInfo->bLaserEnable = ((PFADDEVIOCTLLASER)pBuf)->bLaserPowerEnabled;
-                setLaserStatus(pInfo, pInfo->bLaserEnable);
+                pInfo->pSetLaserStatus(pInfo, pInfo->bLaserEnable);
     			dwErr = ERROR_SUCCESS;
     			UNLOCK(pInfo);
 			}
             break;
 
 		case IOCTL_FAD_GET_LASER_STATUS:   
-            if (!BspHasLaser())
+            if (!pInfo->bHasLaser)
                 dwErr = ERROR_NOT_SUPPORTED;
 			else
             {
 			    LOCK(pInfo);
-				getLaserStatus(pInfo, (PFADDEVIOCTLLASER)pBuf);
+			    pInfo->pGetLaserStatus(pInfo, (PFADDEVIOCTLLASER)pBuf);
 				dwErr = ERROR_SUCCESS;
     			UNLOCK(pInfo);
             }
@@ -229,22 +221,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             dwErr = ERROR_NOT_SUPPORTED;
             break;
 
-        // Old IOCTLs moved to FPGA (FVD driver)
-        case IOCTL_FAD_GET_SHUTTER_STATUS:
-        case IOCTL_FAD_SET_SHUTTER_STATUS:
-			dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
-        // Code intended for Temp ADUC but used for Cooler ADUC
-		case IOCTL_FAD_RESET_TEMPCPU:
-            dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
-        // Code intended for Temp ADUC but used for Cooler ADUC
-        case IOCTL_FAD_RESTART_TEMPCPU:
-            dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
         case IOCTL_FAD_AQUIRE_FILE_ACCESS:   
             dwErr = ERROR_NOT_SUPPORTED;
             break;
@@ -255,7 +231,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 #endif
 
         case IOCTL_FAD_BUZZER:
-            if (!BspHasBuzzer())
+            if (!gpDev->bHasBuzzer)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
 			{
@@ -265,7 +241,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 					(pBuzzerData->eState == BUZZER_TIME))
 				{
 					// Activate sound
-					SetBuzzerFrequency(pBuzzerData->usFreq, pBuzzerData->ucPWM);
+					pInfo->pSetBuzzerFrequency(pBuzzerData->usFreq, pBuzzerData->ucPWM);
 				}
 				if (pBuzzerData->eState == BUZZER_TIME)
 				{
@@ -277,7 +253,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 					(pBuzzerData->eState == BUZZER_TIME))
 				{
 					// Switch off sound
-					SetBuzzerFrequency(0, 0);
+					pInfo->pSetBuzzerFrequency(0, 0);
 				}
     			UNLOCK(pInfo);
                 dwErr = ERROR_SUCCESS;
@@ -297,10 +273,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             dwErr = ERROR_NOT_SUPPORTED;
             break;
 
-        case IOCTL_FAD_TRIG_OPTICS:
-            dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
         // IrDA no longer used
         case IOCTL_FAD_DISABLE_IRDA:
         case IOCTL_FAD_ENABLE_IRDA:
@@ -312,33 +284,30 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 #endif
 
-#ifdef NOT_YET
         // A-camera generic IO
         case IOCTL_FAD_GET_DIG_IO_STATUS:
-            if (!BspHasDigitalIO())
+            if (!pInfo->bHasDigitalIO)
                 dwErr = ERROR_NOT_SUPPORTED;
-			else if (pOutBuf != NULL 
-				&& OutBufLen == sizeof(FADDEVIOCTLDIGIO))
+			else
             {
 			    LOCK(pInfo);
-				__try 
-				{
-    				getDigitalStatus((PFADDEVIOCTLDIGIO)pOutBuf);
-    				dwErr = ERROR_SUCCESS;
-				}
-				__except(EXCEPTION_EXECUTE_HANDLER) 
-				{
-            		ASSERT(FALSE);
-                    dwErr = ERROR_EXCEPTION_IN_SERVICE;
-				}
+			    pInfo->pGetDigitalStatus((PFADDEVIOCTLDIGIO)pBuf);
+   				dwErr = ERROR_SUCCESS;
     			UNLOCK(pInfo);
-                if (pdwBytesTransferred != NULL)
-                    *pdwBytesTransferred = sizeof(FADDEVIOCTLDIGIO);
             }
             break;
 
+#ifdef NOT_YET
 		case IOCTL_FAD_SET_DIG_IO_STATUS:
-			dwErr = ERROR_NOT_SUPPORTED;
+            if (!pInfo->bHasDigitalIO)
+                dwErr = ERROR_NOT_SUPPORTED;
+			else
+            {
+			    LOCK(pInfo);
+			    pInfo->pSetDigitalStatus((PFADDEVIOCTLDIGIO)pBuf);
+   				dwErr = ERROR_SUCCESS;
+    			UNLOCK(pInfo);
+            }
             break;
 
 		case IOCTL_FAD_ENABLE_WATCHDOG:
@@ -374,11 +343,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
    		    dwErr = ERROR_SUCCESS;
             break;
 
-        // Pleora GigE board power enable
-        case IOCTL_FAD_ENABLE_PT1000:
-            dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
 		case IOCTL_FAD_GET_LED:
             dwErr = ERROR_NOT_SUPPORTED;
             break;
@@ -386,92 +350,88 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
         case IOCTL_FAD_SET_LED:
             dwErr = ERROR_NOT_SUPPORTED;
             break;
+#endif
 
 		case IOCTL_FAD_GET_KAKA_LED:
-            dwErr = ERROR_NOT_SUPPORTED;
+			if (!pInfo->bHasKAKALed)
+				dwErr = ERROR_NOT_SUPPORTED;
+			else
+			{
+				LOCK(pInfo);
+				pInfo->pGetKAKALedState((PFADDEVIOCTLLED) pBuf);
+				dwErr = ERROR_SUCCESS;
+				UNLOCK(pInfo);
+			}
             break;
 
         case IOCTL_FAD_SET_KAKA_LED:
-            dwErr = ERROR_NOT_SUPPORTED;
+            if (!pInfo->bHasKAKALed)
+                dwErr = ERROR_NOT_SUPPORTED;
+		    else
+            {
+		        LOCK(pInfo);
+		        pInfo->pSetKAKALedState((PFADDEVIOCTLLED) pBuf);
+   			    dwErr = ERROR_SUCCESS;
+				UNLOCK(pInfo);
+		    }
             break;
 
 	    case IOCTL_FAD_SET_GPS_ENABLE:
-            if (!BspHasGPS())
+            if (!pInfo->bHasGPS)
                 dwErr = ERROR_NOT_SUPPORTED;
-		    else if (pInBuf != NULL 
-			    && InBufLen == sizeof(FADDEVIOCTLGPS))
+		    else
             {
 		        LOCK(pInfo);
-				__try 
-				{
-    			    setGPSEnable(((PFADDEVIOCTLGPS) pInBuf)->bGPSEnabled);
-	    		    bGPSEnable = ((PFADDEVIOCTLGPS) pInBuf)->bGPSEnabled;
-    			    dwErr = ERROR_SUCCESS;
-                }
-				__except(EXCEPTION_EXECUTE_HANDLER) 
-				{
-            		ASSERT(FALSE);
-                    dwErr = ERROR_EXCEPTION_IN_SERVICE;
-				}
+		        pInfo->pSetGPSEnable(((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled);
+    		    bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
+   			    dwErr = ERROR_SUCCESS;
 				UNLOCK(pInfo);
 		    }
             break;
 
 	    case IOCTL_FAD_GET_GPS_ENABLE:   
-            if (!BspHasGPS())
+            if (!pInfo->bHasGPS)
                 dwErr = ERROR_NOT_SUPPORTED;
-		    else if (pOutBuf != NULL 
-			    && OutBufLen == sizeof(FADDEVIOCTLGPS))
-            {
+		    else
+		    {
 		        LOCK(pInfo);
-				__try 
-				{
-    			    getGPSEnable(&(((PFADDEVIOCTLGPS) pOutBuf)->bGPSEnabled));
-                    if (pdwBytesTransferred != NULL)
-                        *pdwBytesTransferred = sizeof(FADDEVIOCTLGPS);
-	    		    dwErr = ERROR_SUCCESS;
-                }
-				__except(EXCEPTION_EXECUTE_HANDLER) 
-				{
-            		ASSERT(FALSE);
-                    dwErr = ERROR_EXCEPTION_IN_SERVICE;
-				}
+				pInfo->pGetGPSEnable(&(((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled));
+				dwErr = ERROR_SUCCESS;
 			    UNLOCK(pInfo);
             }
             break;
-#endif
 
         case IOCTL_FAD_SET_LASER_ACTIVE:
-            if (!BspHasLaser())
+            if (!gpDev->bHasLaser)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
             {
 			    LOCK(pInfo);
-				SetLaserActive(pInfo, ((FADDEVIOCTLLASERACTIVE *)pBuf)->bLaserActive == TRUE);
+			    pInfo->pSetLaserActive(pInfo, ((FADDEVIOCTLLASERACTIVE *)pBuf)->bLaserActive == TRUE);
 				dwErr = ERROR_SUCCESS;
     			UNLOCK(pInfo);
 			}
             break;
 
         case IOCTL_FAD_GET_LASER_ACTIVE:
-            if (!BspHasLaser())
+            if (!gpDev->bHasLaser)
                 dwErr = ERROR_NOT_SUPPORTED;
 			else
             {
 			    LOCK(pInfo);
-				((FADDEVIOCTLLASERACTIVE *)pBuf)->bLaserActive = GetLaserActive(pInfo);
+				((FADDEVIOCTLLASERACTIVE *)pBuf)->bLaserActive = pInfo->pGetLaserActive(pInfo);
 				dwErr = ERROR_SUCCESS;
     			UNLOCK(pInfo);
             }
             break;
 
         case IOCTL_FAD_GET_HDMI_STATUS:
-            if (!BspHasHdmi())
+            if (!pInfo->bHasHdmi)
                 dwErr = ERROR_NOT_SUPPORTED;
 		    else
 		    {
 			    LOCK(pInfo);
-				getHdmiStatus(pInfo, (PFADDEVIOCTLHDMI)pBuf);
+			    pInfo->pGetHdmiStatus(pInfo, (PFADDEVIOCTLHDMI)pBuf);
 				dwErr = ERROR_SUCCESS;
     		    UNLOCK(pInfo);
 		    }
@@ -492,50 +452,50 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 #endif
         case IOCTL_FAD_SET_HDMI_ACCESS:
-            if (!BspHasHdmi())
+            if (!gpDev->bHasHdmi)
                 dwErr = ERROR_NOT_SUPPORTED;
 		    else
 		    {
 			    LOCK(pInfo);
-				setHdmiI2cState (* (DWORD*) pBuf);
+			    pInfo->pSetHdmiI2cState (* (DWORD*) pBuf);
 				dwErr = ERROR_SUCCESS;
     		    UNLOCK(pInfo);
 		    }
             break;
 
 		case IOCTL_FAD_GET_KP_BACKLIGHT:
-            if (!BspHasKpBacklight())
+            if (!gpDev->bHasKpBacklight)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
 			{
-       		    dwErr = GetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)pBuf);
+       		    dwErr = pInfo->pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)pBuf);
             }
             break;
 
         case IOCTL_FAD_SET_KP_BACKLIGHT:
-            if (!BspHasKpBacklight())
+            if (!gpDev->bHasKpBacklight)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
 			{
-       		    dwErr = SetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)pBuf);
+       		    dwErr = pInfo->pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)pBuf);
             }
             break;
 
 		case IOCTL_FAD_GET_KP_SUBJ_BACKLIGHT:
-            if (!BspHasKpBacklight())
+            if (!gpDev->bHasKpBacklight)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
 			{
-       		    dwErr = GetKeypadSubjBacklight(pInfo, (FADDEVIOCTLSUBJBACKLIGHT *)pBuf);
+       		    dwErr = pInfo->pGetKeypadSubjBacklight(pInfo, (FADDEVIOCTLSUBJBACKLIGHT *)pBuf);
             }
             break;
 
         case IOCTL_FAD_SET_KP_SUBJ_BACKLIGHT:
-            if (!BspHasKpBacklight())
+            if (!gpDev->bHasKpBacklight)
                 dwErr = ERROR_NOT_SUPPORTED;
             else
 			{
-       		    dwErr = SetKeypadSubjBacklight(pInfo, (FADDEVIOCTLSUBJBACKLIGHT *)pBuf);
+       		    dwErr = pInfo->pSetKeypadSubjBacklight(pInfo, (FADDEVIOCTLSUBJBACKLIGHT *)pBuf);
             }
             break;
 
@@ -570,7 +530,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 // FAD_IOControl
 //
 ////////////////////////////////////////////////////////
-static int FAD_IOControl(struct inode *inode, struct file *filep,
+static long FAD_IOControl(struct file *filep,
 		unsigned int cmd, unsigned long arg)
 {
     DWORD dwErr = ERROR_SUCCESS;

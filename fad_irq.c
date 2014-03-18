@@ -16,12 +16,13 @@
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
 
-#include "../fvd/flir_kernel_os.h"
+#include "flir_kernel_os.h"
 #include "faddev.h"
 #include "i2cdev.h"
 #include "fad_internal.h"
 #include <linux/irq.h>
 #include <linux/platform_device.h>
+#include <linux/irq.h>
 
 // Internal function prototypes
 irqreturn_t fadLaserIST(int irq, void *dev_id);
@@ -53,7 +54,7 @@ BOOL InitHdmiIrq(PFAD_HW_INDEP_INFO pInfo)
 
 	pInfo->hdmiIrqQueue = create_singlethread_workqueue("HdmiQueue");
 
-	INIT_WORK(&pInfo->hdmiWork, HandleHdmiInterrupt);
+	INIT_WORK(&pInfo->hdmiWork, pInfo->pHandleHdmiInterrupt);
 
 	ret = request_irq(gpio_to_irq(I2C2_HDMI_INT), fadHdmiIST,
 			IRQF_TRIGGER_FALLING, "HdmiInt", pInfo);
@@ -252,12 +253,12 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
     ApplicationEvent(pInfo);
 	if (bWaitForNeg)
 	{
-		set_irq_type(IOMUX_TO_IRQ(LASER_ON), IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
+		irq_set_irq_type(gpio_to_irq(LASER_ON), IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
 		bWaitForNeg = FALSE;
 	}
 	else
 	{
-		set_irq_type(IOMUX_TO_IRQ(LASER_ON), IRQF_TRIGGER_LOW | IRQF_ONESHOT);
+		irq_set_irq_type(gpio_to_irq(LASER_ON), IRQF_TRIGGER_LOW | IRQF_ONESHOT);
 		bWaitForNeg = TRUE;
 	}
 

@@ -16,7 +16,7 @@
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
 
-#include "../fvd/flir_kernel_os.h"
+#include "flir_kernel_os.h"
 #include "faddev.h"
 #include "i2cdev.h"
 #include "fad_internal.h"
@@ -49,7 +49,33 @@ typedef struct
 
 // Function prototypes
 
-void BspEnablePower(BOOL bEnable);
+static DWORD setKAKALedState(FADDEVIOCTLLED* pLED);
+static DWORD getKAKALedState(FADDEVIOCTLLED* pLED);
+static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
+static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
+static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
+static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
+static DWORD readHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR* pValue);
+static DWORD writeHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR value);
+static void getHdmiStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLHDMI pHdmiStatus);
+static void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable);
+static BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo);
+static void setHdmiI2cState (DWORD state);
+static void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
+static DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
+static DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
+static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+static BOOL setGPSEnable(BOOL enabled);
+static BOOL getGPSEnable(BOOL *enabled);
+static void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout);
+static BOOL WdogService(PFAD_HW_INDEP_INFO pInfo);
+static void initHdmi(PFAD_HW_INDEP_INFO pInfo);
+static void BspGetSubjBackLightLevel(UINT8* pLow, UINT8* pMedium, UINT8* pHigh);
+static UINT8 KeypadLowMediumLimit(PFAD_HW_INDEP_INFO pInfo);
+static UINT8 KeypadMediumHighLimit(PFAD_HW_INDEP_INFO pInfo);
+static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
+static void HandleHdmiInterrupt(struct work_struct *hdmiWork);
 
 // Code
 
@@ -118,7 +144,7 @@ static BOOL InitI2CIoport (PFAD_HW_INDEP_INFO pInfo)
 //
 //-----------------------------------------------------------------------------
 
-BOOL SetI2CIoport (PFAD_HW_INDEP_INFO pInfo, UCHAR bit, BOOL value)
+static BOOL SetI2CIoport (PFAD_HW_INDEP_INFO pInfo, UCHAR bit, BOOL value)
 {
 	struct i2c_msg msgs[2];
     int res;
@@ -199,8 +225,44 @@ static BOOL GetI2CIoport (PFAD_HW_INDEP_INFO pInfo, UCHAR bit)
     return ((buf[0] & (1 << bit)) != 0);
 }
 
-void initHW(PFAD_HW_INDEP_INFO pInfo)
+void SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 {
+	pInfo->bHasLaser = TRUE;
+	pInfo->bHasHdmi = TRUE;
+	pInfo->bHasGPS = TRUE;
+	pInfo->bHas7173 = FALSE;
+	pInfo->bHas5VEnable = TRUE;
+	pInfo->bHasDigitalIO = FALSE;
+	pInfo->bHasKAKALed = FALSE;
+	pInfo->bHasBuzzer = TRUE;
+	pInfo->bHasKpBacklight = TRUE;
+	pInfo->bHasSoftwareControlledLaser = TRUE;
+
+	pInfo->pGetKAKALedState = getKAKALedState;
+	pInfo->pSetKAKALedState = setKAKALedState;
+	pInfo->pGetDigitalStatus = getDigitalStatus;
+	pInfo->pSetLaserStatus = setLaserStatus;
+	pInfo->pGetLaserStatus = getLaserStatus;
+	pInfo->pUpdateLaserOutput = updateLaserOutput;
+	pInfo->pSetBuzzerFrequency = SetBuzzerFrequency;
+	pInfo->pSetHdmiI2cState = setHdmiI2cState;
+	pInfo->pGetHdmiStatus = getHdmiStatus;
+    pInfo->pSetLaserActive = SetLaserActive;
+    pInfo->pGetLaserActive = GetLaserActive;
+    pInfo->pSetKeypadBacklight = SetKeypadBacklight;
+    pInfo->pGetKeypadBacklight = GetKeypadBacklight;
+    pInfo->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
+    pInfo->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
+    pInfo->pSetGPSEnable = setGPSEnable;
+    pInfo->pGetGPSEnable = getGPSEnable;
+    pInfo->pWdogInit = WdogInit;
+    pInfo->pWdogService = WdogService;
+    pInfo->pCleanupHW = CleanupHW;
+    pInfo->pHandleHdmiInterrupt = HandleHdmiInterrupt;
+
+	pInfo->hI2C1 = i2c_get_adapter(0);
+	pInfo->hI2C2 = i2c_get_adapter(1);
+
     SetI2CIoport(pInfo, VCM_LED_EN, TRUE);
     SetI2CIoport(pInfo, LASER_SWITCH_ON, FALSE);
     SetI2CIoport(pInfo, FOCUS_POWER_EN, TRUE);
@@ -208,7 +270,7 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
     InitI2CIoport(pInfo);
 
     // Laser ON
-    if (BspHasLaser())
+    if (pInfo->bHasLaser)
 	{
     	if (gpio_is_valid(LASER_ON) == 0)
     	    pr_err("LaserON can not be used\n");
@@ -216,7 +278,7 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
     	gpio_direction_input(LASER_ON);
     }
 
-	if (BspHas5VEnable())
+	if (pInfo->bHas5VEnable)
 	{
     	if (gpio_is_valid(PIN_3V6A_EN) == 0)
     	    pr_err("3V6A_EN can not be used\n");
@@ -224,7 +286,7 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
     	gpio_direction_output(PIN_3V6A_EN, 1);
 	}
 
-    if (BspHasHdmi())
+    if (pInfo->bHasHdmi)
 	{
 	    UCHAR val;
 
@@ -240,7 +302,7 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
 		}
 	}
 
-    if (BspHasBuzzer())
+    if (pInfo->bHasBuzzer)
 	{
 //        DDKIomuxSetPinMux(FLIR_IOMUX_PIN_PWM_BUZZER);
 //        DDKIomuxSetPadConfig(FLIR_IOMUX_PAD_PWM_BUZZER);
@@ -255,18 +317,18 @@ void initHW(PFAD_HW_INDEP_INFO pInfo)
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 {
     // Laser ON
-    if (BspHasLaser())
+    if (pInfo->bHasLaser)
 	{
     	free_irq(gpio_to_irq(LASER_ON), pInfo);
     	gpio_free(LASER_ON);
     }
 
-	if (BspHas5VEnable())
+	if (pInfo->bHas5VEnable)
 	{
     	gpio_free(PIN_3V6A_EN);
 	}
 
-    if (BspHasHdmi())
+    if (pInfo->bHasHdmi)
 	{
     	free_irq(gpio_to_irq(I2C2_HDMI_INT), pInfo);
     	gpio_free(I2C2_HDMI_INT);
@@ -320,10 +382,6 @@ void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 {
 }
 
-void resetPT1000(void)
-{
-}
-
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)
 {
     SetI2CIoport(pInfo, LASER_SWITCH_ON, LaserStatus);
@@ -333,7 +391,7 @@ void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)
 // In software controlled laser, we must enable/disable laser here.
 void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo)
 {
-    if(BspSoftwareControlledLaser())
+    if(pInfo->bHasSoftwareControlledLaser)
     {    
         FADDEVIOCTLLASER laserStatus = {0};
         getLaserStatus(pInfo, &laserStatus);
@@ -353,10 +411,6 @@ void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus)
 {
     pLaserStatus->bLaserIsOn = (gpio_get_value(LASER_ON) == 0);
     pLaserStatus->bLaserPowerEnabled = GetI2CIoport(pInfo, LASER_SWITCH_ON);
-}
-
-void getLCDStatus(PFADDEVIOCTLLCD pLCDStatus)
-{
 }
 
 DWORD readHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR* pValue)
@@ -455,35 +509,9 @@ void initHdmi(PFAD_HW_INDEP_INFO pInfo)
         msleep(25);
     }
 }
-
-void setCoolerState(PFADDEVIOCTLCOOLER pCoolerState)
-{
-}
-
-void getCoolerState(PFADDEVIOCTLCOOLER pCoolerState)
-{
-}
-
 void setHdmiI2cState (DWORD state)
 {
 }
-
-// Enter programming state in temp sensor ADUC
-DWORD resetTempCPUforProgramming(void)
-{
-	return ERROR_SUCCESS;
-}
-
-// Reset temp sensor ADUC
-DWORD resetTempCPUwoProg(void)
-{
-	return ERROR_SUCCESS;
-}
-
-void trigPositionSync(void)
-{
-}
-
 
 BOOL setGPSEnable(BOOL enabled)
 {
@@ -497,11 +525,6 @@ BOOL getGPSEnable(BOOL *enabled)
     // Keep GPS switched on all the time.
     *enabled = TRUE;
     return TRUE;
-}
-
-BOOL initGPSControl(PFAD_HW_INDEP_INFO pInfo)
-{
-	return TRUE;
 }
 
 void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout)
@@ -562,10 +585,6 @@ BOOL WdogService(PFAD_HW_INDEP_INFO pInfo)
     return TRUE;
 }
 
-void StopCoolerByI2C(PFAD_HW_INDEP_INFO pInfo, BOOL bStop)
-{
-}
-
 void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable)
 {
     SetI2CIoport(pInfo, LASER_SOFT_ON, bEnable);
@@ -574,25 +593,6 @@ void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable)
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo)
 {
     return GetI2CIoport(pInfo, LASER_SOFT_ON);
-}
-
-void SetHDMIEnable(BOOL bEnable)
-{
-}
-
-void Set5VEnable(BOOL bEnable)
-{
-	gpio_set_value(PIN_3V6A_EN, bEnable);
-}
-
-BOOL InitModeWheel(void)
-{
-    return FALSE;
-}
-
-DWORD GetModeWheelPosition(void)
-{
-    return 0;
 }
 
 void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
@@ -679,7 +679,7 @@ UINT8 KeypadMediumHighLimit(PFAD_HW_INDEP_INFO pInfo)
 //  subjective levels.
 DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
-    FADDEVIOCTLBACKLIGHT backlight;
+    FADDEVIOCTLBACKLIGHT backlight = {0};
     UINT8 bl_value;
 
     GetKeypadBacklight(&backlight);
@@ -696,4 +696,176 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLSUBJBACKLIGHT
     return ERROR_SUCCESS;
 }
 
+#ifdef NOT_YET
+DWORD getLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED *pLedData)
+{
+    DWORD pinState;
+
+    DDKGpioReadDataPin(FLIR_GPIO_PIN_POWER_ON_LED, &pinState);
+
+    if (pInfo->dwLedFlash)
+    {
+        pLedData->eColor = LED_COLOR_GREEN;
+        if (pInfo->dwLedFlash < 500)
+            pLedData->eState = LED_FLASH_FAST;
+        else
+            pLedData->eState = LED_FLASH_SLOW;
+    }
+    else if (pinState)
+    {
+        pLedData->eColor = LED_COLOR_GREEN;
+        pLedData->eState = LED_STATE_ON;
+    }
+    else
+    {
+        pLedData->eColor = LED_COLOR_OFF;
+        pLedData->eState = LED_STATE_OFF;
+    }
+    return ERROR_SUCCESS;
+}
+
+DWORD setLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED *pLedData)
+{
+    DWORD dwErr = ERROR_SUCCESS;
+
+    DDKIomuxSetPinMux(FLIR_IOMUX_PIN_POWER_ON_LED);
+    DDKIomuxSetPadConfig(FLIR_IOMUX_PAD_POWER_ON_LED);
+    DDKGpioSetConfig(FLIR_GPIO_PIN_POWER_ON_LED, DDK_GPIO_DIR_OUT, DDK_GPIO_INTR_NONE);
+
+    if ((pLedData->eColor != LED_COLOR_OFF) &&
+        (pLedData->eState == LED_STATE_ON))
+    {
+        DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, 1);
+        pInfo->dwLedFlash = 0;
+    }
+    else if ((pLedData->eColor == LED_COLOR_OFF) ||
+        (pLedData->eState == LED_STATE_OFF))
+    {
+        DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, 0);
+        pInfo->dwLedFlash = 0;
+    }
+    else if (pLedData->eState == LED_FLASH_SLOW)
+    {
+        pInfo->dwLedFlash = 1000;
+        SetEvent(pInfo->hLedFlashEvent);
+    }
+    else if (pLedData->eState == LED_FLASH_FAST)
+    {
+        pInfo->dwLedFlash = 100;
+        SetEvent(pInfo->hLedFlashEvent);
+    }
+    else
+    {
+        dwErr = ERROR_INVALID_PARAMETER;
+        pInfo->dwLedFlash = 0;
+    }
+    return dwErr;
+}
+
+DWORD WINAPI fadFlashLed(PVOID pContext)
+{
+    PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)pContext;
+    ULONG timeout;
+    BOOL state = FALSE;
+
+    CeSetThreadPriority(GetCurrentThread(), 246);
+
+    while ( TRUE ) 
+	{
+		// Wait for ISR interrupt notification
+        if (pInfo->dwLedFlash == 0)
+            timeout = INFINITE;
+        else
+            timeout = pInfo->dwLedFlash / 2;
+        WaitForSingleObject(pInfo->hLedFlashEvent, timeout);
+
+        if (pInfo->dwLedFlash)
+        {
+            state = !state;
+            DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, state);
+        }
+    }
+    return(0);
+}
+#endif
+
+DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight)
+{
+#ifdef NOT_YET
+    UINT8 current;
+
+    PmicBacklightGetCurrentLevel(BACKLIGHT_KEYPAD, &current);
+
+    pBacklight->backlight = current * 25;
+#endif
+    return ERROR_SUCCESS;
+}
+
+DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight)
+{
+#ifdef NOT_YET
+    UINT8 level;
+    UINT8 backlight = pBacklight->backlight;
+
+    if ((backlight > 100) || (backlight < 0))
+        return ERROR_INVALID_PARAMETER;
+
+    //turn the 0-100 range to mc13892's current range 0-4;
+    level = (backlight + 12) / 25;
+
+    // set the current level for max for the Display
+    PmicBacklightSetCurrentLevel(BACKLIGHT_KEYPAD, level);
+    PmicBacklightSetDutyCycle(BACKLIGHT_KEYPAD, 32);
+    PmicBacklightSetCurrentLevel(BACKLIGHT_AUX_DISPLAY, level);
+    PmicBacklightSetDutyCycle(BACKLIGHT_AUX_DISPLAY, 32);
+#endif
+    return ERROR_SUCCESS;
+}
+
+#ifdef NOT_YET
+void BspFadPowerDown(BOOL down)
+{
+    static FADDEVIOCTLBACKLIGHT backlight;
+
+    DDKIomuxSetPinMux(FLIR_IOMUX_PIN_POWER_ON_LED);
+    DDKIomuxSetPadConfig(FLIR_IOMUX_PAD_POWER_ON_LED);
+    DDKGpioSetConfig(FLIR_GPIO_PIN_POWER_ON_LED, DDK_GPIO_DIR_OUT, DDK_GPIO_INTR_NONE);
+    DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, (down == FALSE));
+
+    // Keypad backlight handled here as it must be used on ioctl level to use CSPI
+    if (down)
+    {
+        // Keypad backlight
+        GetKeypadBacklight(&backlight);
+        PmicBacklightSetCurrentLevel(BACKLIGHT_KEYPAD, 0);
+        PmicBacklightSetCurrentLevel(BACKLIGHT_AUX_DISPLAY, 0);
+
+        // PIRI I2C expander
+        SetI2CIoport(VCM_LED_EN, FALSE);
+        SetI2CIoport(FOCUS_POWER_EN, FALSE);
+
+        // 5V and 3V3 for USB PHY
+        PmicRegisterWrite(MC13892_CHG_USB1_ADDR, 1, 0x409);
+    }
+    else
+    {
+        // Keypad backlight
+        SetKeypadBacklight(&backlight);
+
+        // PIRI I2C expander
+        SetI2CIoport(VCM_LED_EN, TRUE);
+        SetI2CIoport(FOCUS_POWER_EN, TRUE);
+
+        // 5V and 3V3 for USB PHY
+        PmicRegisterWrite(MC13892_CHG_USB1_ADDR, 0x409, 0x409);
+    }
+}
+#endif
+
+void BspGetSubjBackLightLevel(UINT8* pLow, UINT8* pMedium, UINT8* pHigh)
+{
+    *pLow = 10;
+    *pMedium = 40;
+    *pHigh = 75;
+}
 
