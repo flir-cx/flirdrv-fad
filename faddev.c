@@ -88,6 +88,8 @@ static int __init FAD_Init(void)
     }
     platform_device_add(gpDev->pLinuxDevice);
 	pr_err("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev), MINOR(gpDev->fad_dev));
+	gpDev->fad_class = class_create(THIS_MODULE, "fad");
+    device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
 
 	// initialize this device instance
     sema_init(&gpDev->semDevice, 1);
@@ -142,7 +144,10 @@ static void __devexit FAD_Deinit(void)
     	gpDev->pCleanupHW(gpDev);
         i2c_put_adapter(gpDev->hI2C1);
         i2c_put_adapter(gpDev->hI2C2);
-    	unregister_chrdev_region(gpDev->fad_dev, 1);
+
+        device_destroy(gpDev->fad_class, gpDev->fad_dev);
+    	class_destroy(gpDev->fad_class);
+        unregister_chrdev_region(gpDev->fad_dev, 1);
     	platform_device_unregister(gpDev->pLinuxDevice);
        	kfree(gpDev);
 		gpDev = NULL;

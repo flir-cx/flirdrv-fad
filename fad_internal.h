@@ -52,6 +52,7 @@ extern DWORD g_RestartReason;
 typedef struct __FAD_HW_INDEP_INFO {
 	struct platform_device *pLinuxDevice;
     struct cdev 			fad_cdev;			// Linux character device
+    struct class			*fad_class;
     dev_t 					fad_dev;			// Major.Minor device number
 	struct semaphore        semDevice;			// serialize access to this device's state
     struct semaphore	    semIOport;

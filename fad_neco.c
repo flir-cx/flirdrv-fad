@@ -79,7 +79,7 @@ static void HandleHdmiInterrupt(struct work_struct *hdmiWork);
 void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 {
 	pInfo->bHasLaser = FALSE;
-	pInfo->bHasHdmi = TRUE;
+	pInfo->bHasHdmi = FALSE;
 	pInfo->bHasGPS = FALSE;
 	pInfo->bHas7173 = FALSE;
 	pInfo->bHas5VEnable = FALSE;
