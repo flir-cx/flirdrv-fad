@@ -30,23 +30,6 @@ extern DWORD g_RestartReason;
 // Generic GPIO definitions
 #define LASER_ON			((3-1)*32 + 31)
 #define PIN_3V6A_EN			((3-1)*32 + 30)
-#define I2C2_HDMI_INT		((4-1)*32 + 16)
-
-// Register definitions for HDMI PHY ADV7521NK
-#define HDMI_REG_POWER			0x41
-#define HDMI_REG_STATE			0x42
-#define HDMI_REG_IRQ			0x96
-#define HDMI_REG_CLK_DELAY		0xBA
-#define HDMI_REG_INPUT_FMT		0x15
-#define HDMI_REG_INPUT_TYPE		0x16
-#define HDMI_REG_INPUT_SELECT	0x17
-#define HDMI_REG_DDR			0xD0
-#define HDMI_REG_MUX			0xD6
-#define HDMI_REG_MODE			0xAF
-#define HDMI_REG_TMDS_CODING	0xD5
-#define HDMI_REG_TMDS_TRANSC	0xA1
-#define HDMI_STATE_HPD			0x40
-#define HDMI_EDID_READ          0x04
 
 // Internal variable
 typedef struct __FAD_HW_INDEP_INFO {
@@ -63,11 +46,8 @@ typedef struct __FAD_HW_INDEP_INFO {
     UINT8 					Keypad_bl_low;
     UINT8 					Keypad_bl_medium;
     UINT8 					Keypad_bl_high;
-    struct work_struct 		hdmiWork;
-    struct workqueue_struct *hdmiIrqQueue;
 
     BOOL 		bHasLaser;
-    BOOL 		bHasHdmi;
     BOOL 		bHasGPS;
     BOOL 		bHas7173;
     BOOL 		bHas5VEnable;
@@ -83,9 +63,7 @@ typedef struct __FAD_HW_INDEP_INFO {
     void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *, BOOL LaserStatus);
     void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLLASER pLaserStatus);
     void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);
-    void (*pGetHdmiStatus) (struct __FAD_HW_INDEP_INFO * pInfo, PFADDEVIOCTLHDMI pHdmiStatus);
     void (*pSetBuzzerFrequency) (USHORT usFreq, UCHAR ucPWM);
-    void (*pSetHdmiI2cState) (DWORD state);
     void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo, BOOL bEnable);
     BOOL (*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo);
     DWORD (*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
@@ -97,7 +75,6 @@ typedef struct __FAD_HW_INDEP_INFO {
     void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * pInfo, UINT32 Timeout);
     BOOL (*pWdogService) (struct __FAD_HW_INDEP_INFO * pInfo);
     void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * pInfo);
-    void (*pHandleHdmiInterrupt) (struct work_struct *hdmiWork);
 
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
@@ -110,7 +87,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
 BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
-BOOL InitHdmiIrq(PFAD_HW_INDEP_INFO pInfo);
 BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
 DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo);
 

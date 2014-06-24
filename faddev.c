@@ -121,15 +121,6 @@ static int __init FAD_Init(void)
         }
     }
 
-	// Set up HDMI Active IRQ
-    if (gpDev->bHasHdmi)
-    {
-        if (InitHdmiIrq(gpDev) == FALSE)
-        {
-            return -9;
-        }
-    }
-
 	return 0;
 }
 
@@ -218,14 +209,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 
 #ifdef NOT_YET
-		case IOCTL_FAD_SET_TORCH_STATUS:
-            dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
-        case IOCTL_FAD_GET_TORCH_STATUS:   
-            dwErr = ERROR_NOT_SUPPORTED;
-            break;
-
         case IOCTL_FAD_AQUIRE_FILE_ACCESS:   
             dwErr = ERROR_NOT_SUPPORTED;
             break;
@@ -431,15 +414,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 
         case IOCTL_FAD_GET_HDMI_STATUS:
-            if (!pInfo->bHasHdmi)
-                dwErr = ERROR_NOT_SUPPORTED;
-		    else
-		    {
-			    LOCK(pInfo);
-			    pInfo->pGetHdmiStatus(pInfo, (PFADDEVIOCTLHDMI)pBuf);
-				dwErr = ERROR_SUCCESS;
-    		    UNLOCK(pInfo);
-		    }
+            dwErr = ERROR_NOT_SUPPORTED;
             break;
 
 #ifdef NOT_YET
@@ -457,15 +432,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 #endif
         case IOCTL_FAD_SET_HDMI_ACCESS:
-            if (!gpDev->bHasHdmi)
-                dwErr = ERROR_NOT_SUPPORTED;
-		    else
-		    {
-			    LOCK(pInfo);
-			    pInfo->pSetHdmiI2cState (* (DWORD*) pBuf);
-				dwErr = ERROR_SUCCESS;
-    		    UNLOCK(pInfo);
-		    }
+            dwErr = ERROR_NOT_SUPPORTED;
             break;
 
 		case IOCTL_FAD_GET_KP_BACKLIGHT:

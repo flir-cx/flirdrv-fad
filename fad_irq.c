@@ -26,7 +26,6 @@
 
 // Internal function prototypes
 irqreturn_t fadLaserIST(int irq, void *dev_id);
-irqreturn_t fadHdmiIST(int irq, void *dev_id);
 irqreturn_t fadDigIN1IST(int irq, void *dev_id);
 irqreturn_t fadDigIN2IST(int irq, void *dev_id);
 irqreturn_t fadDigIN3IST(int irq, void *dev_id);
@@ -44,25 +43,6 @@ BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
         pr_err("Failed to request Laser IRQ (%ld)\n", ret);
 	else
         pr_err("Successfully requested Laser IRQ\n");
-
-    return TRUE;
-}
-
-BOOL InitHdmiIrq(PFAD_HW_INDEP_INFO pInfo)
-{
-	DWORD ret;
-
-	pInfo->hdmiIrqQueue = create_singlethread_workqueue("HdmiQueue");
-
-	INIT_WORK(&pInfo->hdmiWork, pInfo->pHandleHdmiInterrupt);
-
-	ret = request_irq(gpio_to_irq(I2C2_HDMI_INT), fadHdmiIST,
-			IRQF_TRIGGER_FALLING, "HdmiInt", pInfo);
-
-	if (ret != 0)
-        pr_err("Failed to request HDMI IRQ (%ld)\n", ret);
-	else
-        pr_err("Successfully requested HDMI IRQ\n");
 
     return TRUE;
 }
@@ -172,17 +152,6 @@ DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo)
 	kobject_uevent(&pInfo->pLinuxDevice->dev.kobj, KOBJ_ADD);
 
 	return ERROR_SUCCESS;
-}
-
-irqreturn_t fadHdmiIST(int irq, void *dev_id)
-{
-    PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
-
-    pr_err("fadHdmiIST\n");
-
-    queue_work(pInfo->hdmiIrqQueue, &pInfo->hdmiWork);
-
-    return IRQ_HANDLED;
 }
 
 irqreturn_t fadDigIN1IST(int irq, void *dev_id)

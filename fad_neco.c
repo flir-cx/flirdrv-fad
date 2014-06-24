@@ -28,7 +28,6 @@
 // Definitions
 
 #define IOPORT_I2C_ADDR     0x46
-#define HDMI_I2C_ADDR		0x72
 
 #define VCM_LED_EN          0
 #define LASER_SWITCH_ON     2
@@ -54,12 +53,8 @@ static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
 static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
 static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
-static DWORD readHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR* pValue);
-static DWORD writeHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR value);
-static void getHdmiStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLHDMI pHdmiStatus);
 static void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable);
 static BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo);
-static void setHdmiI2cState (DWORD state);
 static void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
 static DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
 static DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
@@ -69,17 +64,14 @@ static BOOL setGPSEnable(BOOL enabled);
 static BOOL getGPSEnable(BOOL *enabled);
 static void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout);
 static BOOL WdogService(PFAD_HW_INDEP_INFO pInfo);
-static void initHdmi(PFAD_HW_INDEP_INFO pInfo);
 static void BspGetSubjBackLightLevel(UINT8* pLow, UINT8* pMedium, UINT8* pHigh);
 static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
-static void HandleHdmiInterrupt(struct work_struct *hdmiWork);
 
 // Code
 
 void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 {
 	pInfo->bHasLaser = FALSE;
-	pInfo->bHasHdmi = FALSE;
 	pInfo->bHasGPS = FALSE;
 	pInfo->bHas7173 = FALSE;
 	pInfo->bHas5VEnable = FALSE;
@@ -96,8 +88,6 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	pInfo->pGetLaserStatus = getLaserStatus;
 	pInfo->pUpdateLaserOutput = updateLaserOutput;
 	pInfo->pSetBuzzerFrequency = SetBuzzerFrequency;
-	pInfo->pSetHdmiI2cState = setHdmiI2cState;
-	pInfo->pGetHdmiStatus = getHdmiStatus;
     pInfo->pSetLaserActive = SetLaserActive;
     pInfo->pGetLaserActive = GetLaserActive;
     pInfo->pSetKeypadBacklight = SetKeypadBacklight;
@@ -109,7 +99,6 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
     pInfo->pWdogInit = WdogInit;
     pInfo->pWdogService = WdogService;
     pInfo->pCleanupHW = CleanupHW;
-    pInfo->pHandleHdmiInterrupt = HandleHdmiInterrupt;
 
 	pInfo->hI2C1 = i2c_get_adapter(1);
 	pInfo->hI2C2 = i2c_get_adapter(2);
@@ -131,22 +120,6 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
     	gpio_direction_output(PIN_3V6A_EN, 1);
 	}
 
-    if (pInfo->bHasHdmi)
-	{
-	    UCHAR val;
-
-    	if (gpio_is_valid(I2C2_HDMI_INT) == 0)
-    	    pr_err("I2C2_HDMI_INT can not be used\n");
-    	gpio_request(I2C2_HDMI_INT, "HdmiInt");
-    	gpio_direction_input(I2C2_HDMI_INT);
-
-		readHdmiPhy(pInfo, HDMI_REG_STATE, &val); // Check HPD state
-		if (val & HDMI_STATE_HPD) {
-			// Hot plug detected
-			initHdmi(pInfo);
-		}
-	}
-
     if (pInfo->bHasBuzzer)
 	{
 //        DDKIomuxSetPinMux(FLIR_IOMUX_PIN_PWM_BUZZER);
@@ -156,7 +129,6 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
     BspGetSubjBackLightLevel( &pInfo->Keypad_bl_low,
                               &pInfo->Keypad_bl_medium,
                               &pInfo->Keypad_bl_high);
-
 }
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
@@ -172,45 +144,7 @@ void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 	{
     	gpio_free(PIN_3V6A_EN);
 	}
-
-    if (pInfo->bHasHdmi)
-	{
-    	free_irq(gpio_to_irq(I2C2_HDMI_INT), pInfo);
-    	gpio_free(I2C2_HDMI_INT);
-	}
 }
-
-void HandleHdmiInterrupt(struct work_struct *hdmiWork)
-{
-	UCHAR		val;
-	static BOOL bLastConnected;
-	BOOL        bNowConnected;
-
-	PFAD_HW_INDEP_INFO pInfo = container_of(hdmiWork, FAD_HW_INDEP_INFO, hdmiWork);
-
-    pr_err("HandleHdmiInterrupt\n");
-
-	// Clear interrupt register
-	readHdmiPhy(pInfo, HDMI_REG_IRQ, &val);
-	writeHdmiPhy(pInfo, HDMI_REG_IRQ, val);
-
-	// Check if connected
-	readHdmiPhy(pInfo, HDMI_REG_STATE, &val);
-	bNowConnected = (val & HDMI_STATE_HPD) != 0;
-	if (bNowConnected != bLastConnected)
-	{
-		if (bNowConnected)
-		{
-			pr_err("FAD: HDMI Hot Plug Detected\n");
-			initHdmi(pInfo);
-		}
-		bLastConnected = bNowConnected;
-	    ApplicationEvent(pInfo);
-	}
-
-    pr_err("HDMI state = %d\n", bNowConnected);
-}
-
 
 DWORD setKAKALedState(FADDEVIOCTLLED* pLED)
 {
@@ -221,7 +155,6 @@ DWORD getKAKALedState(FADDEVIOCTLLED* pLED)
 {
 	return ERROR_SUCCESS;
 }
-
 
 void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 {
@@ -238,107 +171,6 @@ void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo)
 }
 
 void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus)
-{
-}
-
-DWORD readHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR* pValue)
-{
-	struct i2c_msg msgs[2];
-    int res;
-    UCHAR buf;
-    UCHAR cmd;
-
-	*pValue = 0;
-
-    msgs[0].addr = HDMI_I2C_ADDR >> 1;
-	msgs[0].flags = 0;
-	msgs[0].len = 1;
-	msgs[0].buf = &cmd;
-    msgs[1].addr = HDMI_I2C_ADDR >> 1;
-	msgs[1].flags = I2C_M_RD;
-	msgs[1].len = 1;
-	msgs[1].buf = &buf;
-
-	cmd = reg;
-    buf = 0;
-
-    res = i2c_transfer(pInfo->hI2C2, msgs, 2);
-
-	if (res > 0)
-	{
-		*pValue = buf;
-	}
-
-	return ((res > 0) ? ERROR_SUCCESS : 1);
-}
-
-DWORD writeHdmiPhy(PFAD_HW_INDEP_INFO pInfo, UCHAR reg, UCHAR value)
-{
-	struct i2c_msg msgs[1];
-    int res;
-    UCHAR buf[2];
-
-    msgs[0].addr = HDMI_I2C_ADDR >> 1;
-	msgs[0].flags = 0;
-	msgs[0].len = 2;
-	msgs[0].buf = buf;
-
-    buf[0] = reg;
-    buf[1] = value;
-
-    res = i2c_transfer(pInfo->hI2C2, msgs, 1);
-
-	pr_err("writeHdmiPhy res=%d\n", res);
-
-	return res;
-}
-
-void getHdmiStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLHDMI pHdmiStatus)
-{
-    UCHAR val;
-
-	pHdmiStatus->bHdmiPresent = FALSE; // Default
-
-	if (ERROR_SUCCESS == readHdmiPhy(pInfo, HDMI_REG_STATE, &val))
-	{
-		pHdmiStatus->bHdmiPresent = val & HDMI_STATE_HPD ? TRUE : FALSE;
-	}
-}
-
-void initHdmi(PFAD_HW_INDEP_INFO pInfo)
-{
-    UCHAR val;
-    UCHAR tmo = 40;
-
-    pr_err("initHdmi\n");
-
-	writeHdmiPhy(pInfo, HDMI_REG_TMDS_TRANSC, 0x3C); // Turn of TMDS trannsceivers
-	writeHdmiPhy(pInfo, HDMI_REG_POWER, 0x10); // Power up
-	writeHdmiPhy(pInfo, 0x98, 0x03); // Required fixed value
-	writeHdmiPhy(pInfo, 0x9C, 0x38); // Required fixed value
-	writeHdmiPhy(pInfo, 0x9D, 0x61); // Required fixed value
-	writeHdmiPhy(pInfo, 0xA2, 0x94); // Required fixed value
-	writeHdmiPhy(pInfo, 0xA3, 0x94); // Required fixed value
-	writeHdmiPhy(pInfo, HDMI_REG_CLK_DELAY, 0x70);
-	writeHdmiPhy(pInfo, 0xDE, 0x88); // Required fixed value
-	writeHdmiPhy(pInfo, HDMI_REG_INPUT_FMT, 0x0A);  // 12-bit RGB 4:4:4 with separate sync
-	writeHdmiPhy(pInfo, HDMI_REG_INPUT_TYPE, 0x02); // Input style 1, Rising edge, RGB color space
-	writeHdmiPhy(pInfo, HDMI_REG_INPUT_SELECT, 0x00);
-	writeHdmiPhy(pInfo, HDMI_REG_DDR, 0x3C);
-	writeHdmiPhy(pInfo, HDMI_REG_TMDS_CODING, 0x10); // Soft TMDS clock turn on A
-	writeHdmiPhy(pInfo, HDMI_REG_MUX, 0x08); // Soft TMDS clock turn on B
-	writeHdmiPhy(pInfo, HDMI_REG_MODE, 0x14);	// DVI mode default, appcore switches to HDMI if that is supported by sink
-
-    // Wait for EDID to be read by PHY
-	while (ERROR_SUCCESS == readHdmiPhy(pInfo, HDMI_REG_IRQ, &val) && tmo--)
-    {
-        if (val & HDMI_EDID_READ)
-            break;
-        msleep(25);
-    }
-}
-
-void setHdmiI2cState (DWORD state)
 {
 }
 
@@ -425,10 +257,6 @@ void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable)
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo)
 {
 	return FALSE;
-}
-
-void SetHDMIEnable(BOOL bEnable)
-{
 }
 
 void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
