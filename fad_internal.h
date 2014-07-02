@@ -30,6 +30,8 @@ extern DWORD g_RestartReason;
 // Generic GPIO definitions
 #define LASER_ON			((3-1)*32 + 31)
 #define PIN_3V6A_EN			((3-1)*32 + 30)
+#define DIGIN_1             ((4-1)*32 + 15)
+#define DIGOUT_1            ((4-1)*32 + 14)
 
 // Internal variable
 typedef struct __FAD_HW_INDEP_INFO {
@@ -49,6 +51,10 @@ typedef struct __FAD_HW_INDEP_INFO {
     struct led_classdev     *red_led_cdev;
     struct led_classdev     *blue_led_cdev;
 
+    // Wait for IRQ variables
+    FAD_EVENT_E             eEvent;
+    wait_queue_head_t       wq;
+
     BOOL 		bHasLaser;
     BOOL 		bHasGPS;
     BOOL 		bHas7173;
@@ -61,6 +67,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 
     DWORD (*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
     DWORD (*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
+    void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
     void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *, BOOL LaserStatus);
     void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLLASER pLaserStatus);
     void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);
@@ -89,7 +96,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
 BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
 BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
-DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 void SetupMX51(PFAD_HW_INDEP_INFO pInfo);

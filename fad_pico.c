@@ -50,6 +50,7 @@ typedef struct
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
+static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
 static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
 static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
@@ -231,6 +232,7 @@ void SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
+    pInfo->pGetDigitalStatus = getDigitalStatus;
 	pInfo->pSetLaserStatus = setLaserStatus;
 	pInfo->pGetLaserStatus = getLaserStatus;
 	pInfo->pUpdateLaserOutput = updateLaserOutput;
@@ -308,6 +310,10 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
 	return ERROR_SUCCESS;
+}
+
+void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
+{
 }
 
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)

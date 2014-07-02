@@ -32,6 +32,7 @@
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
+static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
 static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
 static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
@@ -69,6 +70,7 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
+    pInfo->pGetDigitalStatus = getDigitalStatus;
 	pInfo->pSetLaserStatus = setLaserStatus;
 	pInfo->pGetLaserStatus = getLaserStatus;
 	pInfo->pUpdateLaserOutput = updateLaserOutput;
@@ -105,6 +107,18 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
     	gpio_direction_output(PIN_3V6A_EN, 1);
 	}
 
+    if (pInfo->bHasDigitalIO)
+    {
+        if (gpio_is_valid(DIGIN_1) == 0)
+            pr_err("DIGIN1 can not be used\n");
+        gpio_request(DIGIN_1, "DIGIN1");
+        gpio_direction_input(DIGIN_1);
+        if (gpio_is_valid(DIGOUT_1) == 0)
+            pr_err("DIGOUT1 can not be used\n");
+        gpio_request(DIGOUT_1, "DIGOUT1");
+        gpio_direction_input(DIGOUT_1);
+    }
+
     if (pInfo->bHasBuzzer)
 	{
 //        DDKIomuxSetPinMux(FLIR_IOMUX_PIN_PWM_BUZZER);
@@ -139,6 +153,13 @@ void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 	{
     	gpio_free(PIN_3V6A_EN);
 	}
+
+    if (pInfo->bHasDigitalIO)
+    {
+        free_irq(gpio_to_irq(DIGIN_1), pInfo);
+        gpio_free(DIGIN_1);
+        gpio_free(DIGOUT_1);
+    }
 }
 
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
@@ -204,6 +225,14 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
     }
 
 	return ERROR_SUCCESS;
+}
+
+void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
+{
+    pDigioStatus->ucNumOfDigIn = 1;
+    pDigioStatus->ucNumOfDigOut = 1;
+    pDigioStatus->usInputState = gpio_get_value(DIGIN_1) ? 1 : 0;
+    pDigioStatus->usOutputState = gpio_get_value(DIGOUT_1) ? 1 : 0;
 }
 
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)

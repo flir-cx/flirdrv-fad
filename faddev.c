@@ -95,6 +95,9 @@ static int __init FAD_Init(void)
     sema_init(&gpDev->semDevice, 1);
     sema_init(&gpDev->semIOport, 1);
 
+    // init wait queue
+    init_waitqueue_head(&gpDev->wq);
+
 	// Init hardware
     if (cpu_is_mx51())
     	SetupMX51(gpDev);
@@ -272,13 +275,20 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 #endif
 
+        case IOCTL_FAD_GET_DIG_IO_STATUS:
+            if (!pInfo->bHasDigitalIO)
+                dwErr = ERROR_NOT_SUPPORTED;
+            else
+            {
+                LOCK(pInfo);
+                pInfo->pGetDigitalStatus((PFADDEVIOCTLDIGIO)pBuf);
+                dwErr = ERROR_SUCCESS;
+                UNLOCK(pInfo);
+            }
+            break;
+
 #ifdef NOT_YET
         // A-camera generic IO
-        case IOCTL_FAD_GET_DIG_IO_STATUS:
-            // Handled by FVD driver
-            dwErr = ERROR_NOT_SUPPORTED;
-                break;
-
         case IOCTL_FAD_SET_DIG_IO_STATUS:
             // Handled by FVD driver
             dwErr = ERROR_NOT_SUPPORTED;
@@ -484,6 +494,11 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             dwErr = ERROR_SUCCESS;
             break;
 
+        case IOCTL_FAD_RELEASE_READ:
+            pInfo->eEvent = FAD_RESET_EVENT;
+            wake_up_interruptible(&pInfo->wq);
+            break;
+
 		default:
 			pr_err("FAD: Unsupported IOCTL code %lX\n", Ioctl);
 			dwErr = ERROR_NOT_SUPPORTED;
@@ -541,7 +556,16 @@ static ssize_t dummyWrite (struct file *filp, const char *buf, size_t count, lof
 
 static ssize_t dummyRead (struct file *filp, char *buf, size_t count, loff_t *f_pos)
 {
-	return count;
+    int res;
+
+    if (count < 1)
+        return -EINVAL;
+    res = wait_event_interruptible(gpDev->wq, gpDev->eEvent != FAD_NO_EVENT);
+    if (res < 0)
+        return res;
+    *buf = gpDev->eEvent;
+    gpDev->eEvent = FAD_NO_EVENT;
+	return 1;
 }
 
 static int dummyRelease (struct inode *inode, struct file *filp)
