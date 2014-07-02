@@ -24,33 +24,14 @@
 #include <linux/errno.h>
 #include <linux/leds.h>
 
-#define DEBUG_CLOCK_OUT 0   // Set to 1 to enable clock outputs on CLKO and CLKO2 (for debugging)
-
 // Definitions
-
-#define IOPORT_I2C_ADDR     0x46
-
-#define VCM_LED_EN          0
-#define LASER_SWITCH_ON     2
-#define FOCUS_POWER_EN      3
-#define LASER_SOFT_ON       5
-
-typedef struct
-{
-     volatile unsigned long PWMCR;
-     volatile unsigned long PWMSR;
-     volatile unsigned long PWMIR;
-     volatile unsigned long PWMSAR;
-     volatile unsigned long PWMPR;
-     volatile unsigned long PWMCNR;
-} CSP_PWM_REG, *PCSP_PWM_REG;
 
 // Local variables
 
 // Function prototypes
+
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
-static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
 static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
 static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
@@ -88,7 +69,6 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
-	pInfo->pGetDigitalStatus = getDigitalStatus;
 	pInfo->pSetLaserStatus = setLaserStatus;
 	pInfo->pGetLaserStatus = getLaserStatus;
 	pInfo->pUpdateLaserOutput = updateLaserOutput;
@@ -183,9 +163,16 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
         }
     }
     if (pInfo->red_led_cdev)
+    {
+        pInfo->red_led_cdev->brightness = redLed;
         pInfo->red_led_cdev->brightness_set(pInfo->red_led_cdev, redLed);
+    }
+
     if (pInfo->blue_led_cdev)
+    {
+        pInfo->blue_led_cdev->brightness = blueLed;
         pInfo->blue_led_cdev->brightness_set(pInfo->blue_led_cdev, blueLed);
+    }
 
 	return ERROR_SUCCESS;
 }
@@ -203,24 +190,20 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
     if ((blueLed==FALSE) && (redLed==FALSE))
     {
         pLED->eState = LED_STATE_OFF;
-        pLED->eState = LED_COLOR_GREEN;
+        pLED->eColor = LED_COLOR_GREEN;
     }
     else
     {
         pLED->eState = LED_STATE_ON;
         if (blueLed && redLed)
-            pLED->eState = LED_COLOR_YELLOW;
+            pLED->eColor = LED_COLOR_YELLOW;
         else if (redLed)
-            pLED->eState = LED_COLOR_RED;
+            pLED->eColor = LED_COLOR_RED;
         else
-            pLED->eState = LED_COLOR_GREEN;
+            pLED->eColor = LED_COLOR_GREEN;
     }
 
 	return ERROR_SUCCESS;
-}
-
-void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
-{
 }
 
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)

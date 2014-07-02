@@ -48,9 +48,8 @@ typedef struct
 
 // Function prototypes
 
-static DWORD setKAKALedState(FADDEVIOCTLLED* pLED);
-static DWORD getKAKALedState(FADDEVIOCTLLED* pLED);
-static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
 static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
 static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
 static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
@@ -224,7 +223,7 @@ void SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 	pInfo->bHasGPS = TRUE;
 	pInfo->bHas7173 = FALSE;
 	pInfo->bHas5VEnable = TRUE;
-	pInfo->bHasDigitalIO = FALSE;
+    pInfo->bHasDigitalIO = FALSE;
 	pInfo->bHasKAKALed = FALSE;
 	pInfo->bHasBuzzer = TRUE;
 	pInfo->bHasKpBacklight = TRUE;
@@ -232,7 +231,6 @@ void SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
-	pInfo->pGetDigitalStatus = getDigitalStatus;
 	pInfo->pSetLaserStatus = setLaserStatus;
 	pInfo->pGetLaserStatus = getLaserStatus;
 	pInfo->pUpdateLaserOutput = updateLaserOutput;
@@ -302,18 +300,14 @@ void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 	}
 }
 
-DWORD setKAKALedState(FADDEVIOCTLLED* pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
 	return ERROR_SUCCESS;
 }
 
-DWORD getKAKALedState(FADDEVIOCTLLED* pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
 	return ERROR_SUCCESS;
-}
-
-void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
-{
 }
 
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)

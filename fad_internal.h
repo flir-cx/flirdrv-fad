@@ -61,7 +61,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 
     DWORD (*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
     DWORD (*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
-    void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
     void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *, BOOL LaserStatus);
     void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLLASER pLaserStatus);
     void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);

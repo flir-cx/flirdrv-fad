@@ -272,30 +272,16 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 #endif
 
+#ifdef NOT_YET
         // A-camera generic IO
         case IOCTL_FAD_GET_DIG_IO_STATUS:
-            if (!pInfo->bHasDigitalIO)
-                dwErr = ERROR_NOT_SUPPORTED;
-			else
-            {
-			    LOCK(pInfo);
-			    pInfo->pGetDigitalStatus((PFADDEVIOCTLDIGIO)pBuf);
-   				dwErr = ERROR_SUCCESS;
-    			UNLOCK(pInfo);
-            }
-            break;
+            // Handled by FVD driver
+            dwErr = ERROR_NOT_SUPPORTED;
+                break;
 
-#ifdef NOT_YET
-		case IOCTL_FAD_SET_DIG_IO_STATUS:
-            if (!pInfo->bHasDigitalIO)
-                dwErr = ERROR_NOT_SUPPORTED;
-			else
-            {
-			    LOCK(pInfo);
-			    pInfo->pSetDigitalStatus((PFADDEVIOCTLDIGIO)pBuf);
-   				dwErr = ERROR_SUCCESS;
-    			UNLOCK(pInfo);
-            }
+        case IOCTL_FAD_SET_DIG_IO_STATUS:
+            // Handled by FVD driver
+            dwErr = ERROR_NOT_SUPPORTED;
             break;
 
 		case IOCTL_FAD_ENABLE_WATCHDOG:
