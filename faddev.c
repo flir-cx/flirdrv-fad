@@ -87,7 +87,7 @@ static int __init FAD_Init(void)
         return -4;
     }
     platform_device_add(gpDev->pLinuxDevice);
-	pr_err("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev), MINOR(gpDev->fad_dev));
+    pr_debug("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev), MINOR(gpDev->fad_dev));
 	gpDev->fad_class = class_create(THIS_MODULE, "fad");
     device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
 
@@ -101,7 +101,7 @@ static int __init FAD_Init(void)
     else
     	SetupMX6S(gpDev);
 
-    pr_err("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
+    pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
     // Set up Laser IRQ
     if (gpDev->bHasLaser)
@@ -346,7 +346,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			else
 			{
 				LOCK(pInfo);
-				pInfo->pGetKAKALedState((PFADDEVIOCTLLED) pBuf);
+				pInfo->pGetKAKALedState(pInfo, (PFADDEVIOCTLLED) pBuf);
 				dwErr = ERROR_SUCCESS;
 				UNLOCK(pInfo);
 			}
@@ -358,7 +358,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		    else
             {
 		        LOCK(pInfo);
-		        pInfo->pSetKAKALedState((PFADDEVIOCTLLED) pBuf);
+		        pInfo->pSetKAKALedState(pInfo, (PFADDEVIOCTLLED) pBuf);
    			    dwErr = ERROR_SUCCESS;
 				UNLOCK(pInfo);
 		    }
@@ -425,12 +425,12 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
         case IOCTL_FAD_GET_COOLER_STATE:   
             dwErr = ERROR_NOT_SUPPORTED;
             break;
+#endif
 
         case IOCTL_FAD_GET_MODE_WHEEL_POS:   
             dwErr = ERROR_NOT_SUPPORTED;
             break;
 
-#endif
         case IOCTL_FAD_SET_HDMI_ACCESS:
             dwErr = ERROR_NOT_SUPPORTED;
             break;
@@ -487,6 +487,17 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
             break;
 #endif
 
+        case IOCTL_FAD_GET_SECURITY_PARAMS:
+            {
+                PFADDEVIOCTLSECURITY pSecurity = (PFADDEVIOCTLSECURITY) pBuf;
+                pSecurity->ulVersion = INITIAL_VERSION;
+                pSecurity->ullUniqueID = 0;
+                pSecurity->ulRequire30HzCFClevel = 0;
+                pSecurity->ulRequiredConfigCFClevel = 0;
+            }
+            dwErr = ERROR_SUCCESS;
+            break;
+
 		default:
 			pr_err("FAD: Unsupported IOCTL code %lX\n", Ioctl);
 			dwErr = ERROR_NOT_SUPPORTED;
@@ -511,7 +522,7 @@ static long FAD_IOControl(struct file *filep,
     tmp = kzalloc(_IOC_SIZE(cmd), GFP_KERNEL);
     if (_IOC_DIR(cmd) & _IOC_WRITE)
     {
-		pr_err("FAD Ioctl %X copy from user: %d\n", cmd, _IOC_SIZE(cmd));
+        pr_debug("FAD Ioctl %X copy from user: %d\n", cmd, _IOC_SIZE(cmd));
     	dwErr = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
     	if (dwErr)
     		pr_err("FAD Copy from user failed: %lu\n", dwErr);
@@ -519,19 +530,17 @@ static long FAD_IOControl(struct file *filep,
 
     if (dwErr == ERROR_SUCCESS)
     {
-#ifdef DEBUG_FAD_IOCTL
-		pr_err("FAD Ioctl %X\n", cmd);
-#endif
+        pr_debug("FAD Ioctl %X\n", cmd);
     	dwErr = DoIOControl(gpDev, cmd, tmp, (PUCHAR)arg);
-    	if (dwErr)
+        if (dwErr && (dwErr != ERROR_NOT_SUPPORTED))
     		pr_err("FAD Ioctl failed: %X %ld %d\n", cmd, dwErr, _IOC_NR(cmd));
     }
 
     if ((dwErr == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ))
     {
-		pr_err("FAD Ioctl %X copy to user: %u\n", cmd, _IOC_SIZE(cmd));
+        pr_debug("FAD Ioctl %X copy to user: %u\n", cmd, _IOC_SIZE(cmd));
     	dwErr = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
-    	if (dwErr)
+        if (dwErr)
     		pr_err("FAD Copy to user failed: %ld\n", dwErr);
     }
     kfree(tmp);

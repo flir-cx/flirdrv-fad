@@ -46,6 +46,8 @@ typedef struct __FAD_HW_INDEP_INFO {
     UINT8 					Keypad_bl_low;
     UINT8 					Keypad_bl_medium;
     UINT8 					Keypad_bl_high;
+    struct led_classdev     *red_led_cdev;
+    struct led_classdev     *blue_led_cdev;
 
     BOOL 		bHasLaser;
     BOOL 		bHasGPS;
@@ -57,8 +59,8 @@ typedef struct __FAD_HW_INDEP_INFO {
     BOOL 		bHasKpBacklight;
     BOOL 		bHasSoftwareControlledLaser;
 
-    DWORD (*pGetKAKALedState) (FADDEVIOCTLLED* pLED);
-    DWORD (*pSetKAKALedState) (FADDEVIOCTLLED* pLED);
+    DWORD (*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
+    DWORD (*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
     void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
     void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *, BOOL LaserStatus);
     void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLLASER pLaserStatus);

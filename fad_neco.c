@@ -22,6 +22,7 @@
 #include "fad_internal.h"
 #include <linux/i2c.h>
 #include <linux/errno.h>
+#include <linux/leds.h>
 
 #define DEBUG_CLOCK_OUT 0   // Set to 1 to enable clock outputs on CLKO and CLKO2 (for debugging)
 
@@ -47,8 +48,8 @@ typedef struct
 // Local variables
 
 // Function prototypes
-static DWORD setKAKALedState(FADDEVIOCTLLED* pLED);
-static DWORD getKAKALedState(FADDEVIOCTLLED* pLED);
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED);
 static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
 static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus);
@@ -71,6 +72,10 @@ static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
 
 void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 {
+    extern struct list_head leds_list;
+    extern struct rw_semaphore leds_list_lock;
+    struct led_classdev *led_cdev;
+
 	pInfo->bHasLaser = FALSE;
 	pInfo->bHasGPS = FALSE;
 	pInfo->bHas7173 = FALSE;
@@ -129,6 +134,16 @@ void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
     BspGetSubjBackLightLevel( &pInfo->Keypad_bl_low,
                               &pInfo->Keypad_bl_medium,
                               &pInfo->Keypad_bl_high);
+
+    // Find LEDs
+    down_read(&leds_list_lock);
+    list_for_each_entry(led_cdev, &leds_list, node) {
+        if (strcmp(led_cdev->name, "red_led") == 0)
+            pInfo->red_led_cdev = led_cdev;
+        else if (strcmp(led_cdev->name, "blue_led") == 0)
+            pInfo->blue_led_cdev = led_cdev;
+    }
+    up_read(&leds_list_lock);
 }
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
@@ -146,13 +161,61 @@ void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 	}
 }
 
-DWORD setKAKALedState(FADDEVIOCTLLED* pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
+    int redLed = 0;
+    int blueLed = 0;
+
+    if (pLED->eState == LED_STATE_ON)
+    {
+        if (pLED->eColor == LED_COLOR_YELLOW)
+        {
+            redLed = 1;
+            blueLed = 1;
+        }
+        else if (pLED->eColor == LED_COLOR_GREEN)
+        {
+            blueLed = 1;
+        }
+        else if (pLED->eColor == LED_COLOR_RED)
+        {
+            redLed = 1;
+        }
+    }
+    if (pInfo->red_led_cdev)
+        pInfo->red_led_cdev->brightness_set(pInfo->red_led_cdev, redLed);
+    if (pInfo->blue_led_cdev)
+        pInfo->blue_led_cdev->brightness_set(pInfo->blue_led_cdev, blueLed);
+
 	return ERROR_SUCCESS;
 }
 
-DWORD getKAKALedState(FADDEVIOCTLLED* pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
+    BOOL redLed = FALSE;
+    BOOL blueLed = FALSE;
+
+    if (pInfo->red_led_cdev && pInfo->red_led_cdev->brightness)
+        redLed = TRUE;
+    if (pInfo->blue_led_cdev && pInfo->blue_led_cdev->brightness)
+        blueLed = TRUE;
+
+    if ((blueLed==FALSE) && (redLed==FALSE))
+    {
+        pLED->eState = LED_STATE_OFF;
+        pLED->eState = LED_COLOR_GREEN;
+    }
+    else
+    {
+        pLED->eState = LED_STATE_ON;
+        if (blueLed && redLed)
+            pLED->eState = LED_COLOR_YELLOW;
+        else if (redLed)
+            pLED->eState = LED_COLOR_RED;
+        else
+            pLED->eState = LED_COLOR_GREEN;
+    }
+
 	return ERROR_SUCCESS;
 }
 
