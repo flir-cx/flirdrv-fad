@@ -22,16 +22,15 @@
 #include "fad_internal.h"
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
+#include <linux/poll.h>
 
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep,
 		unsigned int cmd, unsigned long arg);
-static ssize_t dummyWrite (struct file *filp, const char __user  *buf, size_t count, loff_t *f_pos);
-static ssize_t dummyRead (struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
-static int dummyRelease (struct inode *inode, struct file *filp);
-static int dummyOpen (struct inode *inode, struct file *filp);
+static unsigned int FadPoll (struct file *filp, poll_table *pt);
+static ssize_t FadRead (struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
 
 static PFAD_HW_INDEP_INFO gpDev;
 
@@ -40,10 +39,8 @@ static struct file_operations fad_fops =
 		.owner = THIS_MODULE,
 //		.ioctl = FAD_IOControl,
 		.unlocked_ioctl = FAD_IOControl,
-		.write = dummyWrite,
-		.read = dummyRead,
-		.open = dummyOpen,
-		.release = dummyRelease,
+		.read = FadRead,
+		.poll = FadPoll,
 };
 
 // Code
@@ -549,12 +546,14 @@ static long FAD_IOControl(struct file *filep,
     return dwErr;
 }
 
-static ssize_t dummyWrite (struct file *filp, const char *buf, size_t count, loff_t *f_pos)
+static unsigned int FadPoll (struct file *filp, poll_table *pt)
 {
-	return count;
+    poll_wait(filp, &gpDev->wq, pt);
+
+    return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
 
-static ssize_t dummyRead (struct file *filp, char *buf, size_t count, loff_t *f_pos)
+static ssize_t FadRead (struct file *filp, char *buf, size_t count, loff_t *f_pos)
 {
     int res;
 
@@ -566,16 +565,6 @@ static ssize_t dummyRead (struct file *filp, char *buf, size_t count, loff_t *f_
     *buf = gpDev->eEvent;
     gpDev->eEvent = FAD_NO_EVENT;
 	return 1;
-}
-
-static int dummyRelease (struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-
-static int dummyOpen (struct inode *inode, struct file *filp)
-{
-	return 0;
 }
 
 module_init (FAD_Init);
