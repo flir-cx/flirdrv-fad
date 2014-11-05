@@ -24,6 +24,15 @@
 #include <linux/i2c.h>
 #include <linux/poll.h>
 
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+#include "../arch/arm/mach-imx/hardware.h"
+#ifndef __devexit
+#define __devexit
+#endif
+#endif
+
+
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 
 // Function prototypes
