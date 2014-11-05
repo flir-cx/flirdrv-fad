@@ -23,7 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/poll.h>
-
+#include <linux/version.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 #include "../arch/arm/mach-imx/hardware.h"
