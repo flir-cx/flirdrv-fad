@@ -52,21 +52,21 @@ static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
 
 // Code
 
-void SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
+void SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 {
     extern struct list_head leds_list;
     extern struct rw_semaphore leds_list_lock;
     struct led_classdev *led_cdev;
 
-	pInfo->bHasLaser = FALSE;
-	pInfo->bHasGPS = FALSE;
+	pInfo->bHasLaser = TRUE;
+	pInfo->bHasGPS = TRUE;
 	pInfo->bHas7173 = FALSE;
 	pInfo->bHas5VEnable = FALSE;
-	pInfo->bHasDigitalIO = TRUE;
-	pInfo->bHasKAKALed = TRUE;
-	pInfo->bHasBuzzer = FALSE;
-	pInfo->bHasKpBacklight = FALSE;
-	pInfo->bHasSoftwareControlledLaser = FALSE;
+	pInfo->bHasDigitalIO = FALSE;
+	pInfo->bHasKAKALed = FALSE;
+	pInfo->bHasBuzzer = TRUE;
+	pInfo->bHasKpBacklight = TRUE;
+	pInfo->bHasSoftwareControlledLaser = TRUE;
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
@@ -164,75 +164,16 @@ void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
-    int redLed = 0;
-    int blueLed = 0;
-
-    if (pLED->eState == LED_STATE_ON)
-    {
-        if (pLED->eColor == LED_COLOR_YELLOW)
-        {
-            redLed = 1;
-            blueLed = 1;
-        }
-        else if (pLED->eColor == LED_COLOR_GREEN)
-        {
-            blueLed = 1;
-        }
-        else if (pLED->eColor == LED_COLOR_RED)
-        {
-            redLed = 1;
-        }
-    }
-    if (pInfo->red_led_cdev)
-    {
-        pInfo->red_led_cdev->brightness = redLed;
-        pInfo->red_led_cdev->brightness_set(pInfo->red_led_cdev, redLed);
-    }
-
-    if (pInfo->blue_led_cdev)
-    {
-        pInfo->blue_led_cdev->brightness = blueLed;
-        pInfo->blue_led_cdev->brightness_set(pInfo->blue_led_cdev, blueLed);
-    }
-
 	return ERROR_SUCCESS;
 }
 
 DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED* pLED)
 {
-    BOOL redLed = FALSE;
-    BOOL blueLed = FALSE;
-
-    if (pInfo->red_led_cdev && pInfo->red_led_cdev->brightness)
-        redLed = TRUE;
-    if (pInfo->blue_led_cdev && pInfo->blue_led_cdev->brightness)
-        blueLed = TRUE;
-
-    if ((blueLed==FALSE) && (redLed==FALSE))
-    {
-        pLED->eState = LED_STATE_OFF;
-        pLED->eColor = LED_COLOR_GREEN;
-    }
-    else
-    {
-        pLED->eState = LED_STATE_ON;
-        if (blueLed && redLed)
-            pLED->eColor = LED_COLOR_YELLOW;
-        else if (redLed)
-            pLED->eColor = LED_COLOR_RED;
-        else
-            pLED->eColor = LED_COLOR_GREEN;
-    }
-
 	return ERROR_SUCCESS;
 }
 
 void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 {
-    pDigioStatus->ucNumOfDigIn = 1;
-    pDigioStatus->ucNumOfDigOut = 1;
-    pDigioStatus->usInputState = gpio_get_value(DIGIN_1) ? 1 : 0;
-    pDigioStatus->usOutputState = gpio_get_value(DIGOUT_1) ? 1 : 0;
 }
 
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)

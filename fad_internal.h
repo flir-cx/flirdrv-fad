@@ -28,7 +28,7 @@ enum {
 extern DWORD g_RestartReason;
 
 // Generic GPIO definitions
-#define LASER_ON			((3-1)*32 + 31)
+#define LASER_ON			((7-1)*32 + 7)
 #define PIN_3V6A_EN			((3-1)*32 + 30)
 #define DIGIN_1             ((4-1)*32 + 15)
 #define DIGOUT_1            ((4-1)*32 + 14)
@@ -100,5 +100,6 @@ BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 void SetupMX51(PFAD_HW_INDEP_INFO pInfo);
 void SetupMX6S(PFAD_HW_INDEP_INFO pInfo);
+void SetupMX6Q(PFAD_HW_INDEP_INFO pInfo);
 
 #endif

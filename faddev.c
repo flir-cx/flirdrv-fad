@@ -29,8 +29,14 @@
 #include "../arch/arm/mach-imx/hardware.h"
 #ifndef __devexit
 #define __devexit
+#define cpu_is_imx6s   cpu_is_imx6dl
 #endif
+#else  // LINUX_VERSION_CODE
+#include "mach/mx6.h"
+    #define cpu_is_imx6s   cpu_is_mx6dl
+    #define cpu_is_imx6q   cpu_is_mx6q
 #endif
+
 
 
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
@@ -107,8 +113,10 @@ static int __init FAD_Init(void)
 	// Init hardware
     if (cpu_is_mx51())
     	SetupMX51(gpDev);
+    else if (cpu_is_imx6s())
+        SetupMX6S(gpDev);
     else
-    	SetupMX6S(gpDev);
+        SetupMX6Q(gpDev);
 
     pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
