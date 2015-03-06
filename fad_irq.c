@@ -36,80 +36,77 @@ BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 	DWORD ret;
 
 	ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
-					  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "LaserON", pInfo);
+			  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "LaserON", pInfo);
 
 	if (ret != 0)
-        pr_err("Failed to request Laser IRQ (%ld)\n", ret);
+		pr_err("Failed to request Laser IRQ (%ld)\n", ret);
 	else
-        pr_err("Successfully requested Laser IRQ\n");
+		pr_err("Successfully requested Laser IRQ\n");
 
-    return TRUE;
+	return TRUE;
 }
 
 BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
 {
-    DWORD ret;
+	DWORD ret;
 
-    ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
-                      IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", pInfo);
+	ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
+			  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", pInfo);
 
-    if (ret != 0)
-        pr_err("Failed to request DIGIN_1 IRQ (%ld)\n", ret);
-    else
-        pr_err("Successfully requested DIGIN_1 IRQ\n");
+	if (ret != 0)
+		pr_err("Failed to request DIGIN_1 IRQ (%ld)\n", ret);
+	else
+		pr_err("Successfully requested DIGIN_1 IRQ\n");
 
 	return TRUE;
 }
 
 DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event)
 {
-    pInfo->eEvent = event;
-    wake_up_interruptible(&pInfo->wq);
+	pInfo->eEvent = event;
+	wake_up_interruptible(&pInfo->wq);
 
 	return ERROR_SUCCESS;
 }
 
 irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 {
-    PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
-    static BOOL         bWaitForNeg = FALSE;
+	PFAD_HW_INDEP_INFO pInfo = (PFAD_HW_INDEP_INFO) dev_id;
+	static BOOL bWaitForNeg = FALSE;
 
-    ApplicationEvent(pInfo, FAD_DIGIN_EVENT);
-    if (bWaitForNeg)
-    {
-        irq_set_irq_type(gpio_to_irq(DIGIN_1), IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
-        bWaitForNeg = FALSE;
-    }
-    else
-    {
-        irq_set_irq_type(gpio_to_irq(DIGIN_1), IRQF_TRIGGER_LOW | IRQF_ONESHOT);
-        bWaitForNeg = TRUE;
-    }
+	ApplicationEvent(pInfo, FAD_DIGIN_EVENT);
+	if (bWaitForNeg) {
+		irq_set_irq_type(gpio_to_irq(DIGIN_1),
+				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
+		bWaitForNeg = FALSE;
+	} else {
+		irq_set_irq_type(gpio_to_irq(DIGIN_1),
+				 IRQF_TRIGGER_LOW | IRQF_ONESHOT);
+		bWaitForNeg = TRUE;
+	}
 
-    pr_err("fadDigIN1IST\n");
+	pr_err("fadDigIN1IST\n");
 
 	return IRQ_HANDLED;
 }
 
 irqreturn_t fadLaserIST(int irq, void *dev_id)
 {
-    PFAD_HW_INDEP_INFO	pInfo = (PFAD_HW_INDEP_INFO)dev_id;
-    static BOOL         bWaitForNeg;
+	PFAD_HW_INDEP_INFO pInfo = (PFAD_HW_INDEP_INFO) dev_id;
+	static BOOL bWaitForNeg;
 
-    ApplicationEvent(pInfo, FAD_LASER_EVENT);
-	if (bWaitForNeg)
-	{
-		irq_set_irq_type(gpio_to_irq(LASER_ON), IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
+	ApplicationEvent(pInfo, FAD_LASER_EVENT);
+	if (bWaitForNeg) {
+		irq_set_irq_type(gpio_to_irq(LASER_ON),
+				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
 		bWaitForNeg = FALSE;
-	}
-	else
-	{
-		irq_set_irq_type(gpio_to_irq(LASER_ON), IRQF_TRIGGER_LOW | IRQF_ONESHOT);
+	} else {
+		irq_set_irq_type(gpio_to_irq(LASER_ON),
+				 IRQF_TRIGGER_LOW | IRQF_ONESHOT);
 		bWaitForNeg = TRUE;
 	}
 
 	pr_err("fadLaserIST\n");
 
-    return IRQ_HANDLED;
+	return IRQ_HANDLED;
 }
-

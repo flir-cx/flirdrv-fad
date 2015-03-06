@@ -20,10 +20,10 @@
 #define FAD_INTERNAL_H
 
 enum {
-    RESTART_REASON_NOT_SET    = 0x00,
-    RESTART_REASON_COLDSTART  = 0x01,
-    RESTART_REASON_WATCH      = 0x02,
-    };
+	RESTART_REASON_NOT_SET = 0x00,
+	RESTART_REASON_COLDSTART = 0x01,
+	RESTART_REASON_WATCH = 0x02,
+};
 
 extern DWORD g_RestartReason;
 
@@ -36,53 +36,60 @@ extern DWORD g_RestartReason;
 // Internal variable
 typedef struct __FAD_HW_INDEP_INFO {
 	struct platform_device *pLinuxDevice;
-    struct cdev 			fad_cdev;			// Linux character device
-    struct class			*fad_class;
-    dev_t 					fad_dev;			// Major.Minor device number
-	struct semaphore        semDevice;			// serialize access to this device's state
-    struct semaphore	    semIOport;
-    struct i2c_adapter 		*hI2C1;
-    struct i2c_adapter 		*hI2C2;
-    BOOL                    bLaserEnable;       // True when laser enable active
-    PVOID                   pWdog;              // Pointer to Watchdog CPU registers
-    UINT8 					Keypad_bl_low;
-    UINT8 					Keypad_bl_medium;
-    UINT8 					Keypad_bl_high;
-    struct led_classdev     *red_led_cdev;
-    struct led_classdev     *blue_led_cdev;
+	struct cdev fad_cdev;	// Linux character device
+	struct class *fad_class;
+	dev_t fad_dev;		// Major.Minor device number
+	struct semaphore semDevice;	// serialize access to this device's state
+	struct semaphore semIOport;
+	struct i2c_adapter *hI2C1;
+	struct i2c_adapter *hI2C2;
+	BOOL bLaserEnable;	// True when laser enable active
+	PVOID pWdog;		// Pointer to Watchdog CPU registers
+	UINT8 Keypad_bl_low;
+	UINT8 Keypad_bl_medium;
+	UINT8 Keypad_bl_high;
+	struct led_classdev *red_led_cdev;
+	struct led_classdev *blue_led_cdev;
 
-    // Wait for IRQ variables
-    FAD_EVENT_E             eEvent;
-    wait_queue_head_t       wq;
+	// Wait for IRQ variables
+	FAD_EVENT_E eEvent;
+	wait_queue_head_t wq;
 
-    BOOL 		bHasLaser;
-    BOOL 		bHasGPS;
-    BOOL 		bHas7173;
-    BOOL 		bHas5VEnable;
-    BOOL 		bHasDigitalIO;
-    BOOL 		bHasKAKALed;
-    BOOL 		bHasBuzzer;
-    BOOL 		bHasKpBacklight;
-    BOOL 		bHasSoftwareControlledLaser;
+	BOOL bHasLaser;
+	BOOL bHasGPS;
+	BOOL bHas7173;
+	BOOL bHas5VEnable;
+	BOOL bHasDigitalIO;
+	BOOL bHasKAKALed;
+	BOOL bHasBuzzer;
+	BOOL bHasKpBacklight;
+	BOOL bHasSoftwareControlledLaser;
 
-    DWORD (*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
-    DWORD (*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo, FADDEVIOCTLLED* pLED);
-    void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
-    void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *, BOOL LaserStatus);
-    void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLLASER pLaserStatus);
-    void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);
-    void (*pSetBuzzerFrequency) (USHORT usFreq, UCHAR ucPWM);
-    void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo, BOOL bEnable);
-    BOOL (*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo);
-    DWORD (*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
-    DWORD (*pSetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
-    DWORD (*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-    DWORD (*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo, PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-    BOOL (*pSetGPSEnable) (BOOL enabled);
-    BOOL (*pGetGPSEnable) (BOOL *enabled);
-    void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * pInfo, UINT32 Timeout);
-    BOOL (*pWdogService) (struct __FAD_HW_INDEP_INFO * pInfo);
-    void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * pInfo);
+	 DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo,
+				   FADDEVIOCTLLED * pLED);
+	 DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo,
+				   FADDEVIOCTLLED * pLED);
+	void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
+	void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
+				 BOOL LaserStatus);
+	void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
+				 PFADDEVIOCTLLASER pLaserStatus);
+	void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);
+	void (*pSetBuzzerFrequency) (USHORT usFreq, UCHAR ucPWM);
+	void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo,
+				 BOOL bEnable);
+	 BOOL(*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo);
+	 DWORD(*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
+	 DWORD(*pSetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
+	 DWORD(*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo,
+					  PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+	 DWORD(*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo,
+					  PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+	 BOOL(*pSetGPSEnable) (BOOL enabled);
+	 BOOL(*pGetGPSEnable) (BOOL * enabled);
+	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * pInfo, UINT32 Timeout);
+	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * pInfo);
+	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * pInfo);
 
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
