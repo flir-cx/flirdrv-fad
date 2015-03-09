@@ -126,7 +126,6 @@ static int __init FAD_Init(void)
 		goto EXIT_OUT_INIT;
 	}
 
-	pr_info("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 	// Set up Laser IRQ
 	retval = InitLaserIrq(gpDev);

@@ -138,6 +138,9 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 			pInfo->blue_led_cdev = led_cdev;
 	}
 	up_read(&leds_list_lock);
+
+	pr_info("I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
+
 	return 0;
 }
 
