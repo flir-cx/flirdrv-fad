@@ -105,8 +105,12 @@ BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
 BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
-void SetupMX51(PFAD_HW_INDEP_INFO pInfo);
-void SetupMX6S(PFAD_HW_INDEP_INFO pInfo);
-void SetupMX6Q(PFAD_HW_INDEP_INFO pInfo);
+int SetupMX51(PFAD_HW_INDEP_INFO pInfo);
+int SetupMX6S(PFAD_HW_INDEP_INFO pInfo);
+int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo);
+
+void InvSetupMX51(PFAD_HW_INDEP_INFO pInfo);
+void InvSetupMX6S(PFAD_HW_INDEP_INFO pInfo);
+void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo);
 
 #endif

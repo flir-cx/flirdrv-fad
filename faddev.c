@@ -24,18 +24,10 @@
 #include <linux/i2c.h>
 #include <linux/poll.h>
 #include <linux/version.h>
+#include "flir-kernel-version.h"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
-#include "../arch/arm/mach-imx/hardware.h"
-#ifndef __devexit
-#define __devexit
-#define cpu_is_imx6s   cpu_is_imx6dl
-#endif
-#else				// LINUX_VERSION_CODE
-#include "mach/mx6.h"
-#define cpu_is_imx6s   cpu_is_mx6dl
-#define cpu_is_imx6q   cpu_is_mx6q
-#endif
+#define ENOLASERIRQ 1
+#define ENODIGIOIRQ 2
 
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 
@@ -60,40 +52,42 @@ static struct file_operations fad_fops = {
 static int __init FAD_Init(void)
 {
 	int i;
+	int retval;
 
-	pr_err("FAD_Init\n");
+	pr_info("FAD_Init\n");
 
-	// Check that we are not already initiated
-	if (gpDev) {
-		pr_err("FAD already initialized\n");
-		return 0;
-	}
 	// Allocate (and zero-initiate) our control structure.
-	gpDev =
-	    (PFAD_HW_INDEP_INFO) kmalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
-	if (!gpDev) {
-		pr_err("Error allocating memory for pDev, FAD_Init failed\n");
-		return -2;
-	}
-	// Reset all data
-	memset(gpDev, 0, sizeof(*gpDev));
+	gpDev = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
 
-	// Register linux driver
+	if (! gpDev) {
+		pr_err("Error allocating memory for pDev, FAD_Init failed\n");
+		goto EXIT_OUT;
+	}
+
 	alloc_chrdev_region(&gpDev->fad_dev, 0, 1, "fad");
 	cdev_init(&gpDev->fad_cdev, &fad_fops);
 	gpDev->fad_cdev.owner = THIS_MODULE;
 	gpDev->fad_cdev.ops = &fad_fops;
+
 	i = cdev_add(&gpDev->fad_cdev, gpDev->fad_dev, 1);
+
 	if (i) {
 		pr_err("Error adding device driver\n");
-		return -3;
+		retval = i;
+		goto EXIT_OUT_ADDEVICE;
 	}
+
 	gpDev->pLinuxDevice = platform_device_alloc("fad", 1);
 	if (gpDev->pLinuxDevice == NULL) {
 		pr_err("Error adding allocating device\n");
-		return -4;
+		goto EXIT_OUT_PLATFORMALLOC;
 	}
-	platform_device_add(gpDev->pLinuxDevice);
+
+	retval = platform_device_add(gpDev->pLinuxDevice);
+	if(retval) {
+		pr_err("Error adding platform device\n");
+		goto EXIT_OUT_PLATFORMADD;
+	}
 	pr_debug("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
 		 MINOR(gpDev->fad_dev));
 	gpDev->fad_class = class_create(THIS_MODULE, "fad");
@@ -107,72 +101,86 @@ static int __init FAD_Init(void)
 	init_waitqueue_head(&gpDev->wq);
 
 	// Init hardware
-	if (cpu_is_mx51())
-		SetupMX51(gpDev);
-	else if (cpu_is_imx6s())
-		SetupMX6S(gpDev);
-	else
-		SetupMX6Q(gpDev);
+	if (cpu_is_mx51()){
+		retval = SetupMX51(gpDev);
+	} else if (cpu_is_imx6s()){
+		retval = SetupMX6S(gpDev);
+	} else{
+		retval = SetupMX6Q(gpDev);
+	}
+
+	if (retval < 0){
+		pr_err("Failed SetupMX6Q\n");
+		goto EXIT_OUT_INIT;
+	}
 
 	pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 	// Set up Laser IRQ
-	if (gpDev->bHasLaser) {
-		if (InitLaserIrq(gpDev) == FALSE) {
-			return -6;
-		}
-	}
-	// Set up Digital I/O IRQ
-	if (gpDev->bHasDigitalIO) {
-		if (InitDigitalIOIrq(gpDev) == FALSE) {
-			return -8;
-		}
+	retval = InitLaserIrq(gpDev);
+	if (retval == FALSE) {
+		pr_err("Failed to request Laser IRQ\n");
+		retval = -ENOLASERIRQ;
+		goto EXIT_NO_LASERIRQ;
+	} else {
+		pr_info("Successfully requested Laser IRQ\n");
 	}
 
-	return 0;
+	// Set up Digital I/O IRQ
+	retval = InitDigitalIOIrq(gpDev);
+	if (retval == FALSE) {
+		pr_err("Failed to request DIGIN_1 IRQ\n");
+		retval=-ENODIGIOIRQ;
+		goto EXIT_NO_DIGIOIRQ;
+	} else {
+	pr_info("Successfully requested DIGIN_1 IRQ\n");
+	}
+
+	return retval;
+
+
+EXIT_NO_DIGIOIRQ:
+	if(! system_is_roco())
+		free_irq(gpio_to_irq(LASER_ON), gpDev);
+
+EXIT_NO_LASERIRQ:
+
+EXIT_OUT_INIT:
+	// Init hardware
+	if (cpu_is_mx51()){
+		InvSetupMX51(gpDev);
+	} else if (cpu_is_imx6s()){
+		InvSetupMX6S(gpDev);
+	} else{
+		InvSetupMX6Q(gpDev);
+	}
+
+	platform_device_del(gpDev->pLinuxDevice);
+EXIT_OUT_PLATFORMADD:
+EXIT_OUT_PLATFORMALLOC:
+	cdev_del(&gpDev->fad_cdev);
+EXIT_OUT_ADDEVICE:
+EXIT_OUT:
+	return -1;
+
 }
 
 static void __devexit FAD_Deinit(void)
 {
-	pr_err("FAD_Deinit\n");
+	pr_info("FAD_Deinit\n");
 
-	// make sure this is a valid context
-	// if the device is running, stop it
-	if (gpDev != NULL) {
-		gpDev->pCleanupHW(gpDev);
-		i2c_put_adapter(gpDev->hI2C1);
-		i2c_put_adapter(gpDev->hI2C2);
-
-		device_destroy(gpDev->fad_class, gpDev->fad_dev);
-		class_destroy(gpDev->fad_class);
-		unregister_chrdev_region(gpDev->fad_dev, 1);
-		platform_device_unregister(gpDev->pLinuxDevice);
-		kfree(gpDev);
-		gpDev = NULL;
-	}
+	gpDev->pCleanupHW(gpDev);
+	i2c_put_adapter(gpDev->hI2C1);
+	i2c_put_adapter(gpDev->hI2C2);
+	
+	device_destroy(gpDev->fad_class, gpDev->fad_dev);
+	class_destroy(gpDev->fad_class);
+	unregister_chrdev_region(gpDev->fad_dev, 1);
+	platform_device_unregister(gpDev->pLinuxDevice);
+	kfree(gpDev);
+	gpDev = NULL;
 }
 
-#ifdef NOT_YET
-static DWORD WatchdogThread(LPVOID lpParameter)
-{
-	PFAD_HW_INDEP_INFO pInfo = lpParameter;
-
-	while (TRUE) {
-		msleep(10000);
-		WdogService(pInfo);
-	}
-	return -1;
-}
-
-static void StartWatchdogThread(PFAD_HW_INDEP_INFO pInfo)
-{
-	static HANDLE hThread = INVALID_HANDLE_VALUE;
-	if (hThread == INVALID_HANDLE_VALUE) {
-		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) WatchdogThread,
-			     pInfo, 0, NULL);
-	}
-}
-#endif
 
 static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			 DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
@@ -569,6 +577,30 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	gpDev->eEvent = FAD_NO_EVENT;
 	return 1;
 }
+
+#ifdef NOT_YET
+static DWORD WatchdogThread(LPVOID lpParameter)
+{
+	PFAD_HW_INDEP_INFO pInfo = lpParameter;
+
+	while (TRUE) {
+		msleep(10000);
+		WdogService(pInfo);
+	}
+	return -1;
+}
+
+static void StartWatchdogThread(PFAD_HW_INDEP_INFO pInfo)
+{
+	static HANDLE hThread = INVALID_HANDLE_VALUE;
+	if (hThread == INVALID_HANDLE_VALUE) {
+		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) WatchdogThread,
+			     pInfo, 0, NULL);
+	}
+}
+#endif
+
+/* ! NOT YET */
 
 module_init(FAD_Init);
 module_exit(FAD_Deinit);

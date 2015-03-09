@@ -56,7 +56,7 @@ static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
 
 // Code
 
-void SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
+int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 {
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
@@ -138,6 +138,16 @@ void SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 			pInfo->blue_led_cdev = led_cdev;
 	}
 	up_read(&leds_list_lock);
+	return 0;
+}
+
+/** 
+ * Inverse setup done in SetupMX6Q...
+ * 
+ * @param pInfo 
+ */
+void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
+{
 }
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)

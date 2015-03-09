@@ -23,6 +23,8 @@
 #include <linux/irq.h>
 #include <linux/platform_device.h>
 #include <linux/irq.h>
+#include "flir-kernel-version.h"
+
 
 // Internal function prototypes
 static irqreturn_t fadLaserIST(int irq, void *dev_id);
@@ -31,34 +33,46 @@ static DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
 
 // Code
 
-BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
+/** 
+ * InitLaserIrq
+ * 
+ * Initialize laser irq if system hase laser
+ *
+ * @param gpDev 
+ * 
+ * @return TRUE if init ok, or if system does not have a laser
+ */
+BOOL InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 {
-	DWORD ret;
-
-	ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
-			  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "LaserON", pInfo);
-
-	if (ret != 0)
-		pr_err("Failed to request Laser IRQ (%ld)\n", ret);
-	else
-		pr_err("Successfully requested Laser IRQ\n");
-
-	return TRUE;
+	int ret = 0;
+	if (gpDev->bHasLaser){
+		if(! system_is_roco()) {
+			ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
+					  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "LaserON", gpDev);
+		}
+	}
+	return ret;
 }
 
-BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
+/** 
+ * InitDigitalIOIrq
+ * 
+ * Initialize digital io irq if system requires it
+ *
+ * @param gpDev 
+ * 
+ * @return  TRUE if init ok, or if system does not have/use digital io for this
+ */
+BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
-	DWORD ret;
-
-	ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
-			  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", pInfo);
-
-	if (ret != 0)
-		pr_err("Failed to request DIGIN_1 IRQ (%ld)\n", ret);
-	else
-		pr_err("Successfully requested DIGIN_1 IRQ\n");
-
-	return TRUE;
+	int ret = 0;
+	if (gpDev->bHasDigitalIO) {
+		if(! system_is_roco()){
+			ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
+				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", gpDev);
+		}
+	}
+	return ret;
 }
 
 DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event)

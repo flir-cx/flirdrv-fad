@@ -219,7 +219,7 @@ static BOOL GetI2CIoport(PFAD_HW_INDEP_INFO pInfo, UCHAR bit)
 	return ((buf[0] & (1 << bit)) != 0);
 }
 
-void SetupMX51(PFAD_HW_INDEP_INFO pInfo)
+int SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 {
 	pInfo->bHasLaser = TRUE;
 	pInfo->bHasGPS = TRUE;
@@ -283,6 +283,7 @@ void SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 				 &pInfo->Keypad_bl_medium,
 				 &pInfo->Keypad_bl_high);
 
+	return 0;
 }
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
