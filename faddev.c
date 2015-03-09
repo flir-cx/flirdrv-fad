@@ -246,10 +246,10 @@ static void __devexit FAD_Deinit(void)
  * 
  * @return 
  */
-static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
+static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			 DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
-	DWORD retval = ERROR_INVALID_PARAMETER;
+	int retval = ERROR_INVALID_PARAMETER;
 //    static ULONG ulWdogTime = 5000;    // 5 seconds
 	static BOOL bGPSEnable = FALSE;
 
@@ -494,7 +494,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 static long FAD_IOControl(struct file *filep,
 			  unsigned int cmd, unsigned long arg)
 {
-	DWORD retval = ERROR_SUCCESS;
+	int retval = ERROR_SUCCESS;
 	char *tmp;
 
 	tmp = kzalloc(_IOC_SIZE(cmd), GFP_KERNEL);
@@ -503,14 +503,14 @@ static long FAD_IOControl(struct file *filep,
 			 _IOC_SIZE(cmd));
 		retval = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("FAD Copy from user failed: %lu\n", retval);
+			pr_err("FAD Copy from user failed: %i\n", retval);
 	}
 
 	if (retval == ERROR_SUCCESS) {
 		pr_debug("FAD Ioctl %X\n", cmd);
 		retval = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
-			pr_err("FAD Ioctl failed: %X %ld %d\n", cmd, retval,
+			pr_err("FAD Ioctl failed: %X %i %d\n", cmd, retval,
 			       _IOC_NR(cmd));
 	}
 
@@ -519,7 +519,7 @@ static long FAD_IOControl(struct file *filep,
 			 _IOC_SIZE(cmd));
 		retval = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("FAD Copy to user failed: %ld\n", retval);
+			pr_err("FAD Copy to user failed: %i\n", retval);
 	}
 	kfree(tmp);
 
