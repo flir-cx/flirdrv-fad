@@ -89,25 +89,25 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	// Laser ON
 	if (pInfo->bHasLaser) {
 		if (gpio_is_valid(LASER_ON) == 0)
-			pr_err("LaserON can not be used\n");
+			pr_err("flirdrv-fad: LaserON can not be used\n");
 		gpio_request(LASER_ON, "LaserON");
 		gpio_direction_input(LASER_ON);
 	}
 
 	if (pInfo->bHas5VEnable) {
 		if (gpio_is_valid(PIN_3V6A_EN) == 0)
-			pr_err("3V6A_EN can not be used\n");
+			pr_err("flirdrv-fad: 3V6A_EN can not be used\n");
 		gpio_request(PIN_3V6A_EN, "3V6AEN");
 		gpio_direction_output(PIN_3V6A_EN, 1);
 	}
 
 	if (pInfo->bHasDigitalIO) {
 		if (gpio_is_valid(DIGIN_1) == 0)
-			pr_err("DIGIN1 can not be used\n");
+			pr_err("flirdrv-fad: DIGIN1 can not be used\n");
 		gpio_request(DIGIN_1, "DIGIN1");
 		gpio_direction_input(DIGIN_1);
 		if (gpio_is_valid(DIGOUT_1) == 0)
-			pr_err("DIGOUT1 can not be used\n");
+			pr_err("flirdrv-fad: DIGOUT1 can not be used\n");
 		gpio_request(DIGOUT_1, "DIGOUT1");
 		gpio_direction_input(DIGOUT_1);
 	}
@@ -137,7 +137,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	//Set up Laser IRQ
 	retval = InitLaserIrq(pInfo);
 	if (retval) {
-		pr_err("Failed to request Laser IRQ\n");
+		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
 	} else {
 		pr_info("Successfully requested Laser IRQ\n");
 	}
@@ -145,7 +145,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	// Set up Digital I/O IRQ
 	retval = InitDigitalIOIrq(pInfo);
 	if (retval) {
-		pr_err("Failed to request DIGIN_1 IRQ\n");
+		pr_err("flirdrv-fad: Failed to request DIGIN_1 IRQ\n");
 	} else {
 	pr_info("Successfully requested DIGIN_1 IRQ\n");
 	}

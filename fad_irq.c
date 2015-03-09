@@ -116,7 +116,7 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 		bWaitForNeg = TRUE;
 	}
 
-	pr_err("fadDigIN1IST\n");
+	pr_err("flirdrv-fad: fadDigIN1IST\n");
 
 	return IRQ_HANDLED;
 }
@@ -137,7 +137,7 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 		bWaitForNeg = TRUE;
 	}
 
-	pr_err("fadLaserIST\n");
+	pr_err("flirdrv-fad: fadLaserIST\n");
 
 	return IRQ_HANDLED;
 }

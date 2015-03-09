@@ -114,7 +114,7 @@ static int __init FAD_Init(void)
 	pInfo = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
 
 	if (! pInfo) {
-		pr_err("Error allocating memory for pDev, FAD_Init failed\n");
+		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
 		goto EXIT_OUT;
 	}
 
@@ -126,30 +126,30 @@ static int __init FAD_Init(void)
 	retval = cdev_add(&pInfo->fad_cdev, pInfo->fad_dev, 1);
 
 	if (retval) {
-		pr_err("Error adding device driver\n");
+		pr_err("flirdrv-fad: Error adding device driver\n");
 		goto EXIT_OUT_ADDEVICE;
 	}
 
 	pInfo->pLinuxDevice = platform_device_alloc("fad", 1);
 	if (pInfo->pLinuxDevice == NULL) {
-		pr_err("Error adding allocating device\n");
+		pr_err("flirdrv-fad: Error adding allocating device\n");
 		goto EXIT_OUT_PLATFORMALLOC;
 	}
 
 	retval = platform_device_add(pInfo->pLinuxDevice);
 	if(retval) {
-		pr_err("Error adding platform device\n");
+		pr_err("flirdrv-fad: Error adding platform device\n");
 		goto EXIT_OUT_PLATFORMADD;
 	}
 
-	pr_debug("FAD driver device id %d.%d added\n", MAJOR(pInfo->fad_dev),
+	pr_debug("flirdrv-fad: FAD driver device id %d.%d added\n", MAJOR(pInfo->fad_dev),
 		 MINOR(pInfo->fad_dev));
 	pInfo->fad_class = class_create(THIS_MODULE, "fad");
 	
 	dev = device_create(pInfo->fad_class, NULL, pInfo->fad_dev, NULL, "fad0");
 
 	if(dev == NULL) {
-		pr_err("Device creation failed\n");
+		pr_err("flirdrv-fad: Device creation failed\n");
 		goto EXIT_OUT_DEVICE;
 	}
 
@@ -163,10 +163,9 @@ static int __init FAD_Init(void)
 	retval = cpu_initialize();
 
 	if (retval < 0){
-		pr_err("Failed SetupMX6Q\n");
+		pr_err("flirdrv-fad: Failed to initialize CPU\n");
 		goto EXIT_OUT_INIT;
 	}
-
 
 	return retval;
 
@@ -446,7 +445,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	default:
-		pr_err("FAD: Unsupported IOCTL code %lX\n", Ioctl);
+		pr_err("flirdrv-fad: FAD: Unsupported IOCTL code %lX\n", Ioctl);
 		retval = ERROR_NOT_SUPPORTED;
 		break;
 	}
@@ -472,27 +471,27 @@ static long FAD_IOControl(struct file *filep,
 
 	tmp = kzalloc(_IOC_SIZE(cmd), GFP_KERNEL);
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
-		pr_debug("FAD Ioctl %X copy from user: %d\n", cmd,
+		pr_debug("flirdrv-fad: FAD Ioctl %X copy from user: %d\n", cmd,
 			 _IOC_SIZE(cmd));
 		retval = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("FAD Copy from user failed: %i\n", retval);
+			pr_err("flirdrv-fad: FAD Copy from user failed: %i\n", retval);
 	}
 
 	if (retval == ERROR_SUCCESS) {
-		pr_debug("FAD Ioctl %X\n", cmd);
+		pr_debug("flirdrv-fad: FAD Ioctl %X\n", cmd);
 		retval = DoIOControl(pInfo, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
-			pr_err("FAD Ioctl failed: %X %i %d\n", cmd, retval,
+			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd, retval,
 			       _IOC_NR(cmd));
 	}
 
 	if ((retval == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ)) {
-		pr_debug("FAD Ioctl %X copy to user: %u\n", cmd,
+		pr_debug("flirdrv-fad: FAD Ioctl %X copy to user: %u\n", cmd,
 			 _IOC_SIZE(cmd));
 		retval = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("FAD Copy to user failed: %i\n", retval);
+			pr_err("flirdrv-fad: FAD Copy to user failed: %i\n", retval);
 	}
 	kfree(tmp);
 
