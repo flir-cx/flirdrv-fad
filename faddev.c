@@ -59,8 +59,8 @@ static struct file_operations fad_fops = {
  */
 static int __init FAD_Init(void)
 {
-	int i;
 	int retval;
+	struct device * dev;
 
 	pr_info("FAD_Init\n");
 
@@ -98,8 +98,9 @@ static int __init FAD_Init(void)
 	pr_debug("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
 		 MINOR(gpDev->fad_dev));
 	gpDev->fad_class = class_create(THIS_MODULE, "fad");
-	retval = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
-	if(retval) {
+	
+	dev = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
+	if(dev == NULL) {
 		pr_err("Device creation failed\n");
 		goto EXIT_OUT_DEVICE;
 	}
