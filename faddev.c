@@ -208,10 +208,9 @@ static void __devexit FAD_Deinit(void)
 
 
 	cpu_deinitialize();
-	/* gpDev->pCleanupHW(gpDev); */
 
 	
-	/* unregister_chrdev_region(gpDev->fad_dev, 1); */
+	unregister_chrdev_region(gpDev->fad_dev, 1);
 	device_destroy(gpDev->fad_class, gpDev->fad_dev);
 	class_destroy(gpDev->fad_class);
 	platform_device_unregister(gpDev->pLinuxDevice);
