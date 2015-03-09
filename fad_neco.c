@@ -141,6 +141,26 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 
 	pr_info("I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
 
+
+	//Set up Laser IRQ
+	int retval;
+	retval = InitLaserIrq(pInfo);
+	if (retval) {
+		pr_err("Failed to request Laser IRQ\n");
+	} else {
+		pr_info("Successfully requested Laser IRQ\n");
+	}
+
+	// Set up Digital I/O IRQ
+	retval = InitDigitalIOIrq(pInfo);
+	if (retval) {
+		pr_err("Failed to request DIGIN_1 IRQ\n");
+	} else {
+	pr_info("Successfully requested DIGIN_1 IRQ\n");
+	}
+
+
+
 	return 0;
 }
 

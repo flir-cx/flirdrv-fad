@@ -26,8 +26,6 @@
 #include <linux/version.h>
 #include "flir-kernel-version.h"
 
-#define ENOLASERIRQ 1
-#define ENODIGIOIRQ 2
 #define EUNKNOWNCPU 3
 
 
@@ -167,36 +165,8 @@ static int __init FAD_Init(void)
 	}
 
 
-	//Set up Laser IRQ
-	retval = InitLaserIrq(pInfo);
-	if (retval) {
-		pr_err("Failed to request Laser IRQ\n");
-		retval = -ENOLASERIRQ;
-		goto EXIT_NO_LASERIRQ;
-	} else {
-		pr_info("Successfully requested Laser IRQ\n");
-	}
-
-	// Set up Digital I/O IRQ
-	retval = InitDigitalIOIrq(pInfo);
-	if (retval) {
-		pr_err("Failed to request DIGIN_1 IRQ\n");
-		retval=-ENODIGIOIRQ;
-		goto EXIT_NO_DIGIOIRQ;
-	} else {
-	pr_info("Successfully requested DIGIN_1 IRQ\n");
-	}
-
 	return retval;
 
-
-EXIT_NO_DIGIOIRQ:
-	if(! system_is_roco())
-		free_irq(gpio_to_irq(DIGIN_1), pInfo);
-
-EXIT_NO_LASERIRQ:
-	if(! system_is_roco())
-		free_irq(gpio_to_irq(LASER_ON), pInfo);
 
 EXIT_OUT_INIT:
 	cpu_deinitialize();

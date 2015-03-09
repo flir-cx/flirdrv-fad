@@ -40,19 +40,23 @@ static DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
  *
  * @param pInfo 
  * 
- * @return TRUE if init ok, or if system does not have a laser
+ * @return retval
  */
-BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
+int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 {
 	int ret = 0;
 	if (pInfo->bHasLaser){
-		if(! system_is_roco()) {
+		if(system_is_roco()) {
+
+		} else {
 			ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
-					  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "LaserON", pInfo);
+					  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
+					  "LaserON", pInfo);
 		}
 	}
 	return ret;
 }
+
 
 /** 
  * InitDigitalIOIrq
@@ -61,13 +65,14 @@ BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
  *
  * @param pInfo 
  * 
- * @return  TRUE if init ok, or if system does not have/use digital io for this
+ * @return retval
  */
-BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
+int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
 {
 	int ret = 0;
 	if (pInfo->bHasDigitalIO) {
-		if(! system_is_roco()){
+		if(system_is_roco()){
+		} else {
 			ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
 				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", pInfo);
 		}

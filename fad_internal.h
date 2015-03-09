@@ -101,8 +101,8 @@ typedef struct __FAD_HW_INDEP_INFO {
 #define	UNLOCK_IOPORT(pd)	up(&pd->semIOport)
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
-BOOL InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
-BOOL InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
+int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
+int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 int SetupMX51(PFAD_HW_INDEP_INFO pInfo);

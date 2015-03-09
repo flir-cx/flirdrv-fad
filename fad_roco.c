@@ -23,12 +23,15 @@
 #include <linux/i2c.h>
 #include <linux/errno.h>
 #include <linux/leds.h>
+#include "flir-kernel-version.h"
 
 // Definitions
-
+#define ENOLASERIRQ 1
+#define ENODIGIOIRQ 2
 // Local variables
 
 // Function prototypes
+
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED);
@@ -61,6 +64,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
+	int retval;
 
 	pInfo->bHasLaser = TRUE;
 	pInfo->bHasGPS = TRUE;
@@ -138,7 +142,33 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 
 	pr_info("I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
 
-	return 0;
+	//Set up Laser IRQ
+	retval = InitLaserIrq(pInfo);
+	if (retval) {
+		pr_err("Failed to request Laser IRQ\n");
+		retval = -ENOLASERIRQ;
+		goto EXIT_NO_LASERIRQ;
+	}
+
+	// Set up Digital I/O IRQ
+	retval = InitDigitalIOIrq(pInfo);
+	if (retval) {
+		pr_err("Failed to request DIGIN_1 IRQ\n");
+		retval=-ENODIGIOIRQ;
+		goto EXIT_NO_DIGIOIRQ;
+	}
+
+	goto EXIT;
+
+EXIT_NO_DIGIOIRQ:
+	if(! system_is_roco())
+		free_irq(gpio_to_irq(DIGIN_1), pInfo);
+
+EXIT_NO_LASERIRQ:
+	if(! system_is_roco())
+		free_irq(gpio_to_irq(LASER_ON), pInfo);
+EXIT:
+	return retval;
 }
 
 /** 
@@ -148,12 +178,13 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 {
-//		free_irq(gpio_to_irq(LASER_ON), pInfo);
 	gpio_free(LASER_ON);
 	gpio_free(PIN_3V6A_EN);
 	gpio_free(DIGIN_1);
 	gpio_free(DIGOUT_1);
 
+	free_irq(gpio_to_irq(DIGIN_1), pInfo);
+	free_irq(gpio_to_irq(LASER_ON), pInfo);
 
 	i2c_put_adapter(pInfo->hI2C1);
 	i2c_put_adapter(pInfo->hI2C2);
