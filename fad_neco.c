@@ -58,6 +58,7 @@ static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
 
 int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 {
+	int retval;
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
@@ -143,7 +144,6 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 
 
 	//Set up Laser IRQ
-	int retval;
 	retval = InitLaserIrq(pInfo);
 	if (retval) {
 		pr_err("Failed to request Laser IRQ\n");

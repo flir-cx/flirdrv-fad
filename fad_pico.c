@@ -221,6 +221,8 @@ static BOOL GetI2CIoport(PFAD_HW_INDEP_INFO pInfo, UCHAR bit)
 
 int SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 {
+	int retval;
+
 	pInfo->bHasLaser = TRUE;
 	pInfo->bHasGPS = TRUE;
 	pInfo->bHas7173 = FALSE;
@@ -286,7 +288,6 @@ int SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 
 
 	//Set up Laser IRQ
-	int retval;
 	retval = InitLaserIrq(pInfo);
 	if (retval) {
 		pr_err("Failed to request Laser IRQ\n");
