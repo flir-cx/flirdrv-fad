@@ -630,41 +630,7 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	return 1;
 }
 
-#ifdef NOT_YET
-/** 
- * WatchdogThread
- * 
- * @param lpParameter 
- * 
- * @return 
- */
-static DWORD WatchdogThread(LPVOID lpParameter)
-{
-	PFAD_HW_INDEP_INFO pInfo = lpParameter;
 
-	while (TRUE) {
-		msleep(10000);
-		WdogService(pInfo);
-	}
-	return -1;
-}
-
-/** 
- * StartWatcdogThread
- * 
- * @param pInfo 
- */
-static void StartWatchdogThread(PFAD_HW_INDEP_INFO pInfo)
-{
-	static HANDLE hThread = INVALID_HANDLE_VALUE;
-	if (hThread == INVALID_HANDLE_VALUE) {
-		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) WatchdogThread,
-			     pInfo, 0, NULL);
-	}
-}
-#endif
-
-/* ! NOT YET */
 
 module_init(FAD_Init);
 module_exit(FAD_Deinit);
