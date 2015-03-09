@@ -71,7 +71,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	pInfo->bHasBuzzer = TRUE;
 	pInfo->bHasKpBacklight = TRUE;
 	pInfo->bHasSoftwareControlledLaser = TRUE;
-
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
 	pInfo->pGetDigitalStatus = getDigitalStatus;
@@ -148,6 +147,9 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 {
+	i2c_put_adapter(pInfo->hI2C1);
+	i2c_put_adapter(pInfo->hI2C2);
+
 }
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)

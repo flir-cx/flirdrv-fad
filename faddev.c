@@ -69,11 +69,10 @@ static int __init FAD_Init(void)
 	gpDev->fad_cdev.owner = THIS_MODULE;
 	gpDev->fad_cdev.ops = &fad_fops;
 
-	i = cdev_add(&gpDev->fad_cdev, gpDev->fad_dev, 1);
+	retval = cdev_add(&gpDev->fad_cdev, gpDev->fad_dev, 1);
 
-	if (i) {
+	if (retval) {
 		pr_err("Error adding device driver\n");
-		retval = i;
 		goto EXIT_OUT_ADDEVICE;
 	}
 
@@ -91,14 +90,18 @@ static int __init FAD_Init(void)
 	pr_debug("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
 		 MINOR(gpDev->fad_dev));
 	gpDev->fad_class = class_create(THIS_MODULE, "fad");
-	device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
+	retval = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
+	if(retval) {
+		pr_err("Device creation failed\n");
+		goto EXIT_OUT_DEVICE;
+	}
 
 	// initialize this device instance
 	sema_init(&gpDev->semDevice, 1);
 	sema_init(&gpDev->semIOport, 1);
 
 	// init wait queue
-	init_waitqueue_head(&gpDev->wq);
+	init_waitqueue_head(&gpDev->wq); 
 
 	// Init hardware
 	if (cpu_is_mx51()){
@@ -114,7 +117,7 @@ static int __init FAD_Init(void)
 		goto EXIT_OUT_INIT;
 	}
 
-	pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
+	pr_info("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 	// Set up Laser IRQ
 	retval = InitLaserIrq(gpDev);
@@ -141,9 +144,11 @@ static int __init FAD_Init(void)
 
 EXIT_NO_DIGIOIRQ:
 	if(! system_is_roco())
-		free_irq(gpio_to_irq(LASER_ON), gpDev);
+		free_irq(gpio_to_irq(DIGIN_1), gpDev);
 
 EXIT_NO_LASERIRQ:
+	if(! system_is_roco())
+		free_irq(gpio_to_irq(LASER_ON), gpDev);
 
 EXIT_OUT_INIT:
 	// Init hardware
@@ -155,11 +160,13 @@ EXIT_OUT_INIT:
 		InvSetupMX6Q(gpDev);
 	}
 
-	platform_device_del(gpDev->pLinuxDevice);
+EXIT_OUT_DEVICE:
+	device_destroy(gpDev->fad_class, gpDev->fad_dev);
 EXIT_OUT_PLATFORMADD:
+	platform_device_del(gpDev->pLinuxDevice);
 EXIT_OUT_PLATFORMALLOC:
-	cdev_del(&gpDev->fad_cdev);
 EXIT_OUT_ADDEVICE:
+	cdev_del(&gpDev->fad_cdev);
 EXIT_OUT:
 	return -1;
 
