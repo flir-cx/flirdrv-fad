@@ -167,12 +167,12 @@ void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
 {
-	return ERROR_SUCCESS;
+	return 0;
 }
 
 DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
 {
-	return ERROR_SUCCESS;
+	return 0;
 }
 
 void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
@@ -258,20 +258,20 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
 	pr_info("flirdrv-fad GetKeypadSubjBackligt not implemented\n");
-	return ERROR_SUCCESS;
+	return 0;
 }
 
 
 DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight)
 {
 	pr_info("GetKeypadBackligt not implemented\n");
-	return ERROR_SUCCESS;
+	return 0;
 }
 
 DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight)
 {
 	pr_info("SetKeypadBacklight not implemented\n");
-	return ERROR_SUCCESS;
+	return 0;
 }
 
 void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
