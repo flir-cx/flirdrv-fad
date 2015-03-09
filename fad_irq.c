@@ -29,7 +29,7 @@
 // Internal function prototypes
 static irqreturn_t fadLaserIST(int irq, void *dev_id);
 static irqreturn_t fadDigIN1IST(int irq, void *dev_id);
-static DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
+static void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
 
 // Code
 
@@ -80,12 +80,10 @@ int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
 	return ret;
 }
 
-DWORD ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event)
+void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event)
 {
 	pInfo->eEvent = event;
 	wake_up_interruptible(&pInfo->wq);
-
-	return ERROR_SUCCESS;
 }
 
 irqreturn_t fadDigIN1IST(int irq, void *dev_id)
