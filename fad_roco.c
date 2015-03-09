@@ -88,34 +88,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	pInfo->hI2C1 = i2c_get_adapter(1);
 	pInfo->hI2C2 = i2c_get_adapter(2);
 
-	// Laser ON
-	if (pInfo->bHasLaser) {
-		if (gpio_is_valid(LASER_ON) == 0)
-			pr_err("flirdrv-fad: LaserON can not be used\n");
-		gpio_request(LASER_ON, "LaserON");
-		gpio_direction_input(LASER_ON);
-	}
 
-	if (pInfo->bHas5VEnable) {
-		if (gpio_is_valid(PIN_3V6A_EN) == 0)
-			pr_err("flirdrv-fad: 3V6A_EN can not be used\n");
-		gpio_request(PIN_3V6A_EN, "3V6AEN");
-		gpio_direction_output(PIN_3V6A_EN, 1);
-	}
-
-	if (pInfo->bHasDigitalIO) {
-		if (gpio_is_valid(DIGIN_1) == 0)
-			pr_err("flirdrv-fad: DIGIN1 can not be used\n");
-		gpio_request(DIGIN_1, "DIGIN1");
-		gpio_direction_input(DIGIN_1);
-	}
-
-	if (pInfo->bHasDigitalIO) {
-		if (gpio_is_valid(DIGOUT_1) == 0)
-			pr_err("flirdrv-fad: DIGOUT1 can not be used\n");
-		gpio_request(DIGOUT_1, "DIGOUT1");
-		gpio_direction_input(DIGOUT_1);
-	}
 
 	BspGetSubjBackLightLevel(&pInfo->Keypad_bl_low,
 				 &pInfo->Keypad_bl_medium,
@@ -133,28 +106,24 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 
 	pr_info("flirdrv-fad: I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
 
-	//Set up Laser IRQ
+	//Set up Laser
+	// Laser ON
+	if (pInfo->bHasLaser) {
+		if (gpio_is_valid(LASER_ON) == 0)
+			pr_err("flirdrv-fad: LaserON can not be used\n");
+		gpio_request(LASER_ON, "LaserON");
+		gpio_direction_input(LASER_ON);
+	}
+
 	retval = InitLaserIrq(pInfo);
+
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
 		retval = -ENOLASERIRQ;
 		goto EXIT_NO_LASERIRQ;
 	}
 
-	// Set up Digital I/O IRQ
-	retval = InitDigitalIOIrq(pInfo);
-	if (retval) {
-		pr_err("flirdrv-fad: Failed to request DIGIN_1 IRQ\n");
-		retval=-ENODIGIOIRQ;
-		goto EXIT_NO_DIGIOIRQ;
-	}
-
 	goto EXIT;
-
-EXIT_NO_DIGIOIRQ:
-	if(! system_is_roco()){
-		FreeDigitalIOIrq(pInfo);
-	}
 
 EXIT_NO_LASERIRQ:
 	if(! system_is_roco()){

@@ -91,7 +91,6 @@ static int cpu_initialize(void)
 	return retval;
 }
 
-
 /** 
  * CPU Specific Deinitialization
  * 

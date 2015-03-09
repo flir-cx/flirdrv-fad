@@ -46,13 +46,9 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 {
 	int ret = 0;
 	if (pInfo->bHasLaser){
-		if(system_is_roco()) {
-
-		} else {
-			ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
-					  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
-					  "LaserON", pInfo);
-		}
+		ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
+				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
+				  "LaserON", pInfo);
 	}
 	return ret;
 }
@@ -60,11 +56,7 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 {
 	if (pInfo->bHasLaser){
-		if(system_is_roco()) {
-
-		} else {
-			free_irq(gpio_to_irq(LASER_ON), pInfo);
-		}
+		free_irq(gpio_to_irq(LASER_ON), pInfo);
 	}
 }
 
