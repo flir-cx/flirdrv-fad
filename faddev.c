@@ -28,6 +28,8 @@
 
 #define ENOLASERIRQ 1
 #define ENODIGIOIRQ 2
+#define EUNKNOWNCPU 3
+
 
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 
@@ -50,35 +52,49 @@ static struct file_operations fad_fops = {
 
 // Code
 
-
+/** 
+ * CPU Specific initialization
+ * Initializes GPIO, GPIO IRQ, etc per platform
+ * 
+ * 
+ * @return 0 on success
+ */
 static int cpu_initialize(void)
 {
 	int retval;
 
-	// Init hardware
 	if (cpu_is_mx51()){
 		retval = SetupMX51(gpDev);
 	} else 
 	if (cpu_is_imx6s()){
 		retval = SetupMX6S(gpDev);
-	} else{
+	} else if (cpu_is_imx6q()){
 		retval = SetupMX6Q(gpDev);
+	} else{
+		pr_info("Unknown System CPU\n");
+		retval = -EUNKNOWNCPU;
 	}
 	return retval;
 }
 
+
+/** 
+ * CPU Specific Deinitialization
+ * 
+ */
 static void cpu_deinitialize(void)
 {
-//	deinitialize hardware
 	if (cpu_is_mx51()){
 		InvSetupMX51(gpDev);
-	} else
-	if (cpu_is_imx6s()){
+	} else if (cpu_is_imx6s()){
 		InvSetupMX6S(gpDev);
-	} else{
+	} else if (cpu_is_imx6q()){
 		InvSetupMX6Q(gpDev);
+	} else{
+		pr_info("Unknown System CPU\n");
 	}
 }
+
 /**
  * FAD_Init
  * Initializes FAD
