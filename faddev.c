@@ -40,7 +40,7 @@ static unsigned int FadPoll(struct file *filp, poll_table * pt);
 static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
 		       loff_t * f_pos);
 
-static PFAD_HW_INDEP_INFO gpDev;
+static PFAD_HW_INDEP_INFO pInfo;
 
 static struct file_operations fad_fops = {
 	.owner = THIS_MODULE,
@@ -64,12 +64,12 @@ static int cpu_initialize(void)
 	int retval;
 
 	if (cpu_is_mx51()){
-		retval = SetupMX51(gpDev);
+		retval = SetupMX51(pInfo);
 	} else 
 	if (cpu_is_imx6s()){
-		retval = SetupMX6S(gpDev);
+		retval = SetupMX6S(pInfo);
 	} else if (cpu_is_imx6q()){
-		retval = SetupMX6Q(gpDev);
+		retval = SetupMX6Q(pInfo);
 	} else{
 		pr_info("Unknown System CPU\n");
 		retval = -EUNKNOWNCPU;
@@ -85,11 +85,11 @@ static int cpu_initialize(void)
 static void cpu_deinitialize(void)
 {
 	if (cpu_is_mx51()){
-		InvSetupMX51(gpDev);
+		InvSetupMX51(pInfo);
 	} else if (cpu_is_imx6s()){
-		InvSetupMX6S(gpDev);
+		InvSetupMX6S(pInfo);
 	} else if (cpu_is_imx6q()){
-		InvSetupMX6Q(gpDev);
+		InvSetupMX6Q(pInfo);
 	} else{
 		pr_info("Unknown System CPU\n");
 	}
@@ -110,42 +110,42 @@ static int __init FAD_Init(void)
 	pr_info("FAD_Init\n");
 
 	// Allocate (and zero-initiate) our control structure.
-	gpDev = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
+	pInfo = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
 
-	if (! gpDev) {
+	if (! pInfo) {
 		pr_err("Error allocating memory for pDev, FAD_Init failed\n");
 		goto EXIT_OUT;
 	}
 
-	alloc_chrdev_region(&gpDev->fad_dev, 0, 1, "fad");
-	cdev_init(&gpDev->fad_cdev, &fad_fops);
-	gpDev->fad_cdev.owner = THIS_MODULE;
-	gpDev->fad_cdev.ops = &fad_fops;
+	alloc_chrdev_region(&pInfo->fad_dev, 0, 1, "fad");
+	cdev_init(&pInfo->fad_cdev, &fad_fops);
+	pInfo->fad_cdev.owner = THIS_MODULE;
+	pInfo->fad_cdev.ops = &fad_fops;
 
-	retval = cdev_add(&gpDev->fad_cdev, gpDev->fad_dev, 1);
+	retval = cdev_add(&pInfo->fad_cdev, pInfo->fad_dev, 1);
 
 	if (retval) {
 		pr_err("Error adding device driver\n");
 		goto EXIT_OUT_ADDEVICE;
 	}
 
-	gpDev->pLinuxDevice = platform_device_alloc("fad", 1);
-	if (gpDev->pLinuxDevice == NULL) {
+	pInfo->pLinuxDevice = platform_device_alloc("fad", 1);
+	if (pInfo->pLinuxDevice == NULL) {
 		pr_err("Error adding allocating device\n");
 		goto EXIT_OUT_PLATFORMALLOC;
 	}
 
-	retval = platform_device_add(gpDev->pLinuxDevice);
+	retval = platform_device_add(pInfo->pLinuxDevice);
 	if(retval) {
 		pr_err("Error adding platform device\n");
 		goto EXIT_OUT_PLATFORMADD;
 	}
 
-	pr_debug("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
-		 MINOR(gpDev->fad_dev));
-	gpDev->fad_class = class_create(THIS_MODULE, "fad");
+	pr_debug("FAD driver device id %d.%d added\n", MAJOR(pInfo->fad_dev),
+		 MINOR(pInfo->fad_dev));
+	pInfo->fad_class = class_create(THIS_MODULE, "fad");
 	
-	dev = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
+	dev = device_create(pInfo->fad_class, NULL, pInfo->fad_dev, NULL, "fad0");
 
 	if(dev == NULL) {
 		pr_err("Device creation failed\n");
@@ -153,11 +153,11 @@ static int __init FAD_Init(void)
 	}
 
 	// initialize this device instance
-	sema_init(&gpDev->semDevice, 1);
-	sema_init(&gpDev->semIOport, 1);
+	sema_init(&pInfo->semDevice, 1);
+	sema_init(&pInfo->semIOport, 1);
 
 	// init wait queue
-	init_waitqueue_head(&gpDev->wq);
+	init_waitqueue_head(&pInfo->wq);
 
 	retval = cpu_initialize();
 
@@ -168,7 +168,7 @@ static int __init FAD_Init(void)
 
 
 	//Set up Laser IRQ
-	retval = InitLaserIrq(gpDev);
+	retval = InitLaserIrq(pInfo);
 	if (retval) {
 		pr_err("Failed to request Laser IRQ\n");
 		retval = -ENOLASERIRQ;
@@ -178,7 +178,7 @@ static int __init FAD_Init(void)
 	}
 
 	// Set up Digital I/O IRQ
-	retval = InitDigitalIOIrq(gpDev);
+	retval = InitDigitalIOIrq(pInfo);
 	if (retval) {
 		pr_err("Failed to request DIGIN_1 IRQ\n");
 		retval=-ENODIGIOIRQ;
@@ -192,21 +192,21 @@ static int __init FAD_Init(void)
 
 EXIT_NO_DIGIOIRQ:
 	if(! system_is_roco())
-		free_irq(gpio_to_irq(DIGIN_1), gpDev);
+		free_irq(gpio_to_irq(DIGIN_1), pInfo);
 
 EXIT_NO_LASERIRQ:
 	if(! system_is_roco())
-		free_irq(gpio_to_irq(LASER_ON), gpDev);
+		free_irq(gpio_to_irq(LASER_ON), pInfo);
 
 EXIT_OUT_INIT:
 	cpu_deinitialize();
 EXIT_OUT_DEVICE:
-	device_destroy(gpDev->fad_class, gpDev->fad_dev);
+	device_destroy(pInfo->fad_class, pInfo->fad_dev);
 EXIT_OUT_PLATFORMADD:
-	platform_device_unregister(gpDev->pLinuxDevice);
+	platform_device_unregister(pInfo->pLinuxDevice);
 EXIT_OUT_PLATFORMALLOC:
 EXIT_OUT_ADDEVICE:
-	cdev_del(&gpDev->fad_cdev);
+	cdev_del(&pInfo->fad_cdev);
 EXIT_OUT:
 	return -1;
 
@@ -226,12 +226,12 @@ static void __devexit FAD_Deinit(void)
 	cpu_deinitialize();
 
 	
-	unregister_chrdev_region(gpDev->fad_dev, 1);
-	device_destroy(gpDev->fad_class, gpDev->fad_dev);
-	class_destroy(gpDev->fad_class);
-	platform_device_unregister(gpDev->pLinuxDevice);
-	kfree(gpDev);
-	gpDev = NULL;
+	unregister_chrdev_region(pInfo->fad_dev, 1);
+	device_destroy(pInfo->fad_class, pInfo->fad_dev);
+	class_destroy(pInfo->fad_class);
+	platform_device_unregister(pInfo->pLinuxDevice);
+	kfree(pInfo);
+	pInfo = NULL;
 }
 
 
@@ -283,7 +283,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_BUZZER:
-		if (!gpDev->bHasBuzzer)
+		if (!pInfo->bHasBuzzer)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			FADDEVIOCTLBUZZER *pBuzzerData =
@@ -372,7 +372,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_SET_LASER_ACTIVE:
-		if (!gpDev->bHasLaser)
+		if (!pInfo->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
@@ -385,7 +385,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_GET_LASER_ACTIVE:
-		if (!gpDev->bHasLaser)
+		if (!pInfo->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
@@ -409,7 +409,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_GET_KP_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!pInfo->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
@@ -419,7 +419,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_SET_KP_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!pInfo->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
@@ -429,7 +429,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_GET_KP_SUBJ_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!pInfo->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
@@ -440,7 +440,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_SET_KP_SUBJ_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!pInfo->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
@@ -508,7 +508,7 @@ static long FAD_IOControl(struct file *filep,
 
 	if (retval == ERROR_SUCCESS) {
 		pr_debug("FAD Ioctl %X\n", cmd);
-		retval = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
+		retval = DoIOControl(pInfo, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
 			pr_err("FAD Ioctl failed: %X %i %d\n", cmd, retval,
 			       _IOC_NR(cmd));
@@ -535,9 +535,9 @@ static long FAD_IOControl(struct file *filep,
  */
 static unsigned int FadPoll(struct file *filp, poll_table * pt)
 {
-	poll_wait(filp, &gpDev->wq, pt);
+	poll_wait(filp, &pInfo->wq, pt);
 
-	return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
+	return (pInfo->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
 /** 
  * FadRead
@@ -557,11 +557,11 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	if (count < 1)
 		return -EINVAL;
 	res =
-	    wait_event_interruptible(gpDev->wq, gpDev->eEvent != FAD_NO_EVENT);
+	    wait_event_interruptible(pInfo->wq, pInfo->eEvent != FAD_NO_EVENT);
 	if (res < 0)
 		return res;
-	*buf = gpDev->eEvent;
-	gpDev->eEvent = FAD_NO_EVENT;
+	*buf = pInfo->eEvent;
+	pInfo->eEvent = FAD_NO_EVENT;
 	return 1;
 }
 
