@@ -249,42 +249,42 @@ static void __devexit FAD_Deinit(void)
 static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			 DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
-	DWORD dwErr = ERROR_INVALID_PARAMETER;
+	DWORD retval = ERROR_INVALID_PARAMETER;
 //    static ULONG ulWdogTime = 5000;    // 5 seconds
 	static BOOL bGPSEnable = FALSE;
 
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
 		if (!pInfo->bHasLaser)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->bLaserEnable =
 			    ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
 			pInfo->pSetLaserStatus(pInfo, pInfo->bLaserEnable);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_GET_LASER_STATUS:
 		if (!pInfo->bHasLaser)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->pGetLaserStatus(pInfo, (PFADDEVIOCTLLASER) pBuf);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_SET_APP_EVENT:
-		dwErr = ERROR_SUCCESS;
+		retval = ERROR_SUCCESS;
 		break;
 
 	case IOCTL_FAD_BUZZER:
 		if (!gpDev->bHasBuzzer)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			FADDEVIOCTLBUZZER *pBuzzerData =
 			    (FADDEVIOCTLBUZZER *) pBuf;
@@ -306,113 +306,113 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 				pInfo->pSetBuzzerFrequency(0, 0);
 			}
 			UNLOCK(pInfo);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 		}
 		break;
 
 
 	case IOCTL_FAD_GET_DIG_IO_STATUS:
 		if (!pInfo->bHasDigitalIO)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->pGetDigitalStatus((PFADDEVIOCTLDIGIO) pBuf);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_GET_KAKA_LED:
 		if (!pInfo->bHasKAKALed)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->pGetKAKALedState(pInfo, (PFADDEVIOCTLLED) pBuf);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KAKA_LED:
 		if (!pInfo->bHasKAKALed)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->pSetKAKALedState(pInfo, (PFADDEVIOCTLLED) pBuf);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_SET_GPS_ENABLE:
 		if (!pInfo->bHasGPS)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->pSetGPSEnable(((PFADDEVIOCTLGPS) pBuf)->
 					     bGPSEnabled);
 			bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_GET_GPS_ENABLE:
 		if (!pInfo->bHasGPS)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->
 			    pGetGPSEnable(&
 					  (((PFADDEVIOCTLGPS) pBuf)->
 					   bGPSEnabled));
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_SET_LASER_ACTIVE:
 		if (!gpDev->bHasLaser)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			pInfo->pSetLaserActive(pInfo,
 					       ((FADDEVIOCTLLASERACTIVE *)
 						pBuf)->bLaserActive == TRUE);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_GET_LASER_ACTIVE:
 		if (!gpDev->bHasLaser)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(pInfo);
 			((FADDEVIOCTLLASERACTIVE *) pBuf)->bLaserActive =
 			    pInfo->pGetLaserActive(pInfo);
-			dwErr = ERROR_SUCCESS;
+			retval = ERROR_SUCCESS;
 			UNLOCK(pInfo);
 		}
 		break;
 
 	case IOCTL_FAD_GET_HDMI_STATUS:
-		dwErr = ERROR_NOT_SUPPORTED;
+		retval = ERROR_NOT_SUPPORTED;
 		break;
 
 	case IOCTL_FAD_GET_MODE_WHEEL_POS:
-		dwErr = ERROR_NOT_SUPPORTED;
+		retval = ERROR_NOT_SUPPORTED;
 		break;
 
 	case IOCTL_FAD_SET_HDMI_ACCESS:
-		dwErr = ERROR_NOT_SUPPORTED;
+		retval = ERROR_NOT_SUPPORTED;
 		break;
 
 	case IOCTL_FAD_GET_KP_BACKLIGHT:
 		if (!gpDev->bHasKpBacklight)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
-			dwErr =
+			retval =
 			    pInfo->
 			    pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
@@ -420,9 +420,9 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 	case IOCTL_FAD_SET_KP_BACKLIGHT:
 		if (!gpDev->bHasKpBacklight)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
-			dwErr =
+			retval =
 			    pInfo->
 			    pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
@@ -430,9 +430,9 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 	case IOCTL_FAD_GET_KP_SUBJ_BACKLIGHT:
 		if (!gpDev->bHasKpBacklight)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
-			dwErr =
+			retval =
 			    pInfo->pGetKeypadSubjBacklight(pInfo,
 							   (FADDEVIOCTLSUBJBACKLIGHT
 							    *) pBuf);
@@ -441,9 +441,9 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 	case IOCTL_FAD_SET_KP_SUBJ_BACKLIGHT:
 		if (!gpDev->bHasKpBacklight)
-			dwErr = ERROR_NOT_SUPPORTED;
+			retval = ERROR_NOT_SUPPORTED;
 		else {
-			dwErr =
+			retval =
 			    pInfo->pSetKeypadSubjBacklight(pInfo,
 							   (FADDEVIOCTLSUBJBACKLIGHT
 							    *) pBuf);
@@ -452,7 +452,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 	case IOCTL_FAD_GET_START_REASON:
 		memcpy(pBuf, &g_RestartReason, sizeof(DWORD));
-		dwErr = ERROR_SUCCESS;
+		retval = ERROR_SUCCESS;
 		break;
 
 	case IOCTL_FAD_GET_SECURITY_PARAMS:
@@ -464,7 +464,7 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			pSecurity->ulRequire30HzCFClevel = 0;
 			pSecurity->ulRequiredConfigCFClevel = 0;
 		}
-		dwErr = ERROR_SUCCESS;
+		retval = ERROR_SUCCESS;
 		break;
 
 	case IOCTL_FAD_RELEASE_READ:
@@ -474,12 +474,12 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 	default:
 		pr_err("FAD: Unsupported IOCTL code %lX\n", Ioctl);
-		dwErr = ERROR_NOT_SUPPORTED;
+		retval = ERROR_NOT_SUPPORTED;
 		break;
 	}
 
 	// pass back appropriate response codes
-	return dwErr;
+	return retval;
 }
 
 /** 
@@ -494,36 +494,36 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 static long FAD_IOControl(struct file *filep,
 			  unsigned int cmd, unsigned long arg)
 {
-	DWORD dwErr = ERROR_SUCCESS;
+	DWORD retval = ERROR_SUCCESS;
 	char *tmp;
 
 	tmp = kzalloc(_IOC_SIZE(cmd), GFP_KERNEL);
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		pr_debug("FAD Ioctl %X copy from user: %d\n", cmd,
 			 _IOC_SIZE(cmd));
-		dwErr = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
-		if (dwErr)
-			pr_err("FAD Copy from user failed: %lu\n", dwErr);
+		retval = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
+		if (retval)
+			pr_err("FAD Copy from user failed: %lu\n", retval);
 	}
 
-	if (dwErr == ERROR_SUCCESS) {
+	if (retval == ERROR_SUCCESS) {
 		pr_debug("FAD Ioctl %X\n", cmd);
-		dwErr = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
-		if (dwErr && (dwErr != ERROR_NOT_SUPPORTED))
-			pr_err("FAD Ioctl failed: %X %ld %d\n", cmd, dwErr,
+		retval = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
+		if (retval && (retval != ERROR_NOT_SUPPORTED))
+			pr_err("FAD Ioctl failed: %X %ld %d\n", cmd, retval,
 			       _IOC_NR(cmd));
 	}
 
-	if ((dwErr == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ)) {
+	if ((retval == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ)) {
 		pr_debug("FAD Ioctl %X copy to user: %u\n", cmd,
 			 _IOC_SIZE(cmd));
-		dwErr = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
-		if (dwErr)
-			pr_err("FAD Copy to user failed: %ld\n", dwErr);
+		retval = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
+		if (retval)
+			pr_err("FAD Copy to user failed: %ld\n", retval);
 	}
 	kfree(tmp);
 
-	return dwErr;
+	return retval;
 }
 /** 
  * FADPoll
