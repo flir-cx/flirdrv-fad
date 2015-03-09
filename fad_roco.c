@@ -161,12 +161,14 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	goto EXIT;
 
 EXIT_NO_DIGIOIRQ:
-	if(! system_is_roco())
-		free_irq(gpio_to_irq(DIGIN_1), pInfo);
+	if(! system_is_roco()){
+		FreeDigitalIOIrq(pInfo);
+	}
 
 EXIT_NO_LASERIRQ:
-	if(! system_is_roco())
-		free_irq(gpio_to_irq(LASER_ON), pInfo);
+	if(! system_is_roco()){
+		FreeLaserIrq(pInfo);
+	}
 EXIT:
 	return retval;
 }
@@ -183,8 +185,8 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	gpio_free(DIGIN_1);
 	gpio_free(DIGOUT_1);
 
-	free_irq(gpio_to_irq(DIGIN_1), pInfo);
-	free_irq(gpio_to_irq(LASER_ON), pInfo);
+	FreeLaserIrq(pInfo);
+	FreeDigitalIOIrq(pInfo);
 
 	i2c_put_adapter(pInfo->hI2C1);
 	i2c_put_adapter(pInfo->hI2C2);

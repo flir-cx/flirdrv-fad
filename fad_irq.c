@@ -57,6 +57,17 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 	return ret;
 }
 
+void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo)
+{
+	if (pInfo->bHasLaser){
+		if(system_is_roco()) {
+
+		} else {
+			free_irq(gpio_to_irq(LASER_ON), pInfo);
+		}
+	}
+}
+
 
 /** 
  * InitDigitalIOIrq
@@ -78,6 +89,17 @@ int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
 		}
 	}
 	return ret;
+}
+
+void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
+{
+	if (pInfo->bHasLaser){
+		if(system_is_roco()) {
+
+		} else {
+			free_irq(gpio_to_irq(DIGIN_1), pInfo);
+		}
+	}
 }
 
 void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event)

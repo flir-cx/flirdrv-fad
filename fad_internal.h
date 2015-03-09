@@ -103,6 +103,8 @@ typedef struct __FAD_HW_INDEP_INFO {
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
 int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
 int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
+void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo);
+void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 int SetupMX51(PFAD_HW_INDEP_INFO pInfo);
