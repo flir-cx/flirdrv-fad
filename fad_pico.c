@@ -223,16 +223,6 @@ int SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 {
 	int retval;
 
-	pInfo->bHasLaser = TRUE;
-	pInfo->bHasGPS = TRUE;
-	pInfo->bHas7173 = FALSE;
-	pInfo->bHas5VEnable = TRUE;
-	pInfo->bHasDigitalIO = FALSE;
-	pInfo->bHasKAKALed = FALSE;
-	pInfo->bHasBuzzer = TRUE;
-	pInfo->bHasKpBacklight = TRUE;
-	pInfo->bHasSoftwareControlledLaser = TRUE;
-
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
 	pInfo->pGetDigitalStatus = getDigitalStatus;

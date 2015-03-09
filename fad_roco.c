@@ -66,15 +66,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	struct led_classdev *led_cdev;
 	int retval;
 
-	pInfo->bHasLaser = TRUE;
-	pInfo->bHasGPS = TRUE;
-	pInfo->bHas7173 = FALSE;
-	pInfo->bHas5VEnable = FALSE;
-	pInfo->bHasDigitalIO = FALSE;
-	pInfo->bHasKAKALed = FALSE;
-	pInfo->bHasBuzzer = TRUE;
-	pInfo->bHasKpBacklight = TRUE;
-	pInfo->bHasSoftwareControlledLaser = TRUE;
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
 	pInfo->pGetDigitalStatus = getDigitalStatus;

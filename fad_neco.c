@@ -63,15 +63,6 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
 
-	pInfo->bHasLaser = FALSE;
-	pInfo->bHasGPS = FALSE;
-	pInfo->bHas7173 = FALSE;
-	pInfo->bHas5VEnable = FALSE;
-	pInfo->bHasDigitalIO = TRUE;
-	pInfo->bHasKAKALed = TRUE;
-	pInfo->bHasBuzzer = FALSE;
-	pInfo->bHasKpBacklight = FALSE;
-	pInfo->bHasSoftwareControlledLaser = FALSE;
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;

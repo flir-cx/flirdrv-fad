@@ -62,11 +62,27 @@ static int cpu_initialize(void)
 	int retval;
 
 	if (cpu_is_mx51()){
+		pInfo->bHasLaser = TRUE;
+		pInfo->bHasGPS = TRUE;
+		pInfo->bHas5VEnable = TRUE;
+		pInfo->bHasBuzzer = TRUE;
+		pInfo->bHasKpBacklight = TRUE;
+		pInfo->bHasSoftwareControlledLaser = TRUE;
+
 		retval = SetupMX51(pInfo);
 	} else 
 	if (cpu_is_imx6s()){
+		pInfo->bHasDigitalIO = TRUE;
+		pInfo->bHasKAKALed = TRUE;
+
 		retval = SetupMX6S(pInfo);
 	} else if (cpu_is_imx6q()){
+		pInfo->bHasLaser = TRUE;
+		pInfo->bHasGPS = TRUE;
+		pInfo->bHasBuzzer = TRUE;
+		pInfo->bHasKpBacklight = TRUE;
+		pInfo->bHasSoftwareControlledLaser = TRUE;
+
 		retval = SetupMX6Q(pInfo);
 	} else{
 		pr_info("Unknown System CPU\n");
