@@ -250,16 +250,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		dwErr = ERROR_SUCCESS;
 		break;
 
-#ifdef NOT_YET
-	case IOCTL_FAD_AQUIRE_FILE_ACCESS:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_RELEASE_FILE_ACCESS:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-#endif
-
 	case IOCTL_FAD_BUZZER:
 		if (!gpDev->bHasBuzzer)
 			dwErr = ERROR_NOT_SUPPORTED;
@@ -288,29 +278,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		}
 		break;
 
-#ifdef NOT_YET
-	case IOCTL_FAD_7173_GET_MODE:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_7173_SET_MODE:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_GET_LCD_STATUS:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-		// IrDA no longer used
-	case IOCTL_FAD_DISABLE_IRDA:
-	case IOCTL_FAD_ENABLE_IRDA:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_GET_COMPASS:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-#endif
 
 	case IOCTL_FAD_GET_DIG_IO_STATUS:
 		if (!pInfo->bHasDigitalIO)
@@ -322,49 +289,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			UNLOCK(pInfo);
 		}
 		break;
-
-#ifdef NOT_YET
-		// A-camera generic IO
-	case IOCTL_FAD_SET_DIG_IO_STATUS:
-		// Handled by FVD driver
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_ENABLE_WATCHDOG:
-		if (pInBuf != NULL && InBufLen == sizeof(FADDEVIOCTLWDOG)) {
-			__try {
-				FADDEVIOCTLWDOG *pWdogData =
-				    (FADDEVIOCTLWDOG *) pInBuf;
-				if (pWdogData->bEnable) {
-					if (pWdogData->usTimeMs)
-						ulWdogTime = pWdogData->usTimeMs / 500;	// Convert to 2 Hz
-					WdogInit(pInfo, ulWdogTime);
-				} else {
-					WdogInit(pInfo, 255);	// Longest possible time is 127.5 seconds
-					StartWatchdogThread(pInfo);
-				}
-				dwErr = ERROR_SUCCESS;
-			}
-			__except(EXCEPTION_EXECUTE_HANDLER) {
-				ASSERT(FALSE);
-				dwErr = ERROR_EXCEPTION_IN_SERVICE;
-			}
-		}
-		break;
-
-	case IOCTL_FAD_TRIG_WATCHDOG:
-		WdogService(pInfo);
-		dwErr = ERROR_SUCCESS;
-		break;
-
-	case IOCTL_FAD_GET_LED:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_SET_LED:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-#endif
 
 	case IOCTL_FAD_GET_KAKA_LED:
 		if (!pInfo->bHasKAKALed)
@@ -444,16 +368,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		dwErr = ERROR_NOT_SUPPORTED;
 		break;
 
-#ifdef NOT_YET
-	case IOCTL_FAD_SET_COOLER_STATE:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_GET_COOLER_STATE:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-#endif
-
 	case IOCTL_FAD_GET_MODE_WHEEL_POS:
 		dwErr = ERROR_NOT_SUPPORTED;
 		break;
@@ -508,17 +422,6 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		memcpy(pBuf, &g_RestartReason, sizeof(DWORD));
 		dwErr = ERROR_SUCCESS;
 		break;
-
-#ifdef NOT_YET
-	case IOCTL_FAD_GET_TC_STATE:
-		dwErr = ERROR_NOT_SUPPORTED;
-		break;
-
-	case IOCTL_FAD_IS_WDOG_DISABLE_SUPP:
-		// There is a need to indicated if a true watchdog disable is supported
-		dwErr = ERROR_SUCCESS;
-		break;
-#endif
 
 	case IOCTL_FAD_GET_SECURITY_PARAMS:
 		{
