@@ -61,16 +61,6 @@ static int cpu_initialize(void)
 {
 	int retval;
 
-	if (cpu_is_mx51()){
-		pInfo->bHasLaser = TRUE;
-		pInfo->bHasGPS = TRUE;
-		pInfo->bHas5VEnable = TRUE;
-		pInfo->bHasBuzzer = TRUE;
-		pInfo->bHasKpBacklight = TRUE;
-		pInfo->bHasSoftwareControlledLaser = TRUE;
-
-		retval = SetupMX51(pInfo);
-	} else 
 	if (cpu_is_imx6s()){
 		pInfo->bHasDigitalIO = TRUE;
 		pInfo->bHasKAKALed = TRUE;
@@ -97,9 +87,7 @@ static int cpu_initialize(void)
  */
 static void cpu_deinitialize(void)
 {
-	if (cpu_is_mx51()){
-		InvSetupMX51(pInfo);
-	} else if (cpu_is_imx6s()){
+	if (cpu_is_imx6s()){
 		InvSetupMX6S(pInfo);
 	} else if (cpu_is_imx6q()){
 		InvSetupMX6Q(pInfo);
