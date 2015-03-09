@@ -49,6 +49,14 @@ static struct file_operations fad_fops = {
 };
 
 // Code
+
+/**
+ * FAD_Init
+ * Initializes FAD
+ *
+ *
+ * @return
+ */
 static int __init FAD_Init(void)
 {
 	int i;
@@ -172,6 +180,12 @@ EXIT_OUT:
 
 }
 
+/** 
+ * FAD_Deinit
+ * Cleanup after FAD Init on module unload
+ * 
+ * @return 
+ */
 static void __devexit FAD_Deinit(void)
 {
 	pr_info("FAD_Deinit\n");
@@ -189,6 +203,17 @@ static void __devexit FAD_Deinit(void)
 }
 
 
+
+/** 
+ * DOIOControl
+ * 
+ * @param pInfo 
+ * @param Ioctl 
+ * @param pBuf 
+ * @param pUserBuf 
+ * 
+ * @return 
+ */
 static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 			 DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
@@ -522,11 +547,15 @@ static DWORD DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 	return dwErr;
 }
 
-////////////////////////////////////////////////////////
-//
-// FAD_IOControl
-//
-////////////////////////////////////////////////////////
+/** 
+ * FAD_IOControl
+ * 
+ * @param filep 
+ * @param cmd 
+ * @param arg 
+ * 
+ * @return 
+ */
 static long FAD_IOControl(struct file *filep,
 			  unsigned int cmd, unsigned long arg)
 {
@@ -561,14 +590,30 @@ static long FAD_IOControl(struct file *filep,
 
 	return dwErr;
 }
-
+/** 
+ * FADPoll
+ * 
+ * @param filp 
+ * @param pt 
+ * 
+ * @return 
+ */
 static unsigned int FadPoll(struct file *filp, poll_table * pt)
 {
 	poll_wait(filp, &gpDev->wq, pt);
 
 	return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
-
+/** 
+ * FadRead
+ * 
+ * @param filp 
+ * @param buf 
+ * @param count 
+ * @param f_pos 
+ * 
+ * @return 
+ */
 static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 		       loff_t * f_pos)
 {
@@ -586,6 +631,13 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 }
 
 #ifdef NOT_YET
+/** 
+ * WatchdogThread
+ * 
+ * @param lpParameter 
+ * 
+ * @return 
+ */
 static DWORD WatchdogThread(LPVOID lpParameter)
 {
 	PFAD_HW_INDEP_INFO pInfo = lpParameter;
@@ -597,6 +649,11 @@ static DWORD WatchdogThread(LPVOID lpParameter)
 	return -1;
 }
 
+/** 
+ * StartWatcdogThread
+ * 
+ * @param pInfo 
+ */
 static void StartWatchdogThread(PFAD_HW_INDEP_INFO pInfo)
 {
 	static HANDLE hThread = INVALID_HANDLE_VALUE;
