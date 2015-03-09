@@ -50,6 +50,35 @@ static struct file_operations fad_fops = {
 
 // Code
 
+
+static int cpu_initialize(void)
+{
+	int retval;
+
+	// Init hardware
+	if (cpu_is_mx51()){
+		retval = SetupMX51(gpDev);
+	} else 
+	if (cpu_is_imx6s()){
+		retval = SetupMX6S(gpDev);
+	} else{
+		retval = SetupMX6Q(gpDev);
+	}
+	return retval;
+}
+
+static void cpu_deinitialize(void)
+{
+//	deinitialize hardware
+	if (cpu_is_mx51()){
+		InvSetupMX51(gpDev);
+	} else
+	if (cpu_is_imx6s()){
+		InvSetupMX6S(gpDev);
+	} else{
+		InvSetupMX6Q(gpDev);
+	}
+}
 /**
  * FAD_Init
  * Initializes FAD
@@ -59,7 +88,7 @@ static struct file_operations fad_fops = {
  */
 static int __init FAD_Init(void)
 {
-	int retval;
+	int retval = 0;
 	struct device * dev;
 
 	pr_info("FAD_Init\n");
@@ -95,11 +124,13 @@ static int __init FAD_Init(void)
 		pr_err("Error adding platform device\n");
 		goto EXIT_OUT_PLATFORMADD;
 	}
+
 	pr_debug("FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
 		 MINOR(gpDev->fad_dev));
 	gpDev->fad_class = class_create(THIS_MODULE, "fad");
 	
 	dev = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
+
 	if(dev == NULL) {
 		pr_err("Device creation failed\n");
 		goto EXIT_OUT_DEVICE;
@@ -110,16 +141,9 @@ static int __init FAD_Init(void)
 	sema_init(&gpDev->semIOport, 1);
 
 	// init wait queue
-	init_waitqueue_head(&gpDev->wq); 
+	init_waitqueue_head(&gpDev->wq);
 
-	// Init hardware
-	if (cpu_is_mx51()){
-		retval = SetupMX51(gpDev);
-	} else if (cpu_is_imx6s()){
-		retval = SetupMX6S(gpDev);
-	} else{
-		retval = SetupMX6Q(gpDev);
-	}
+	retval = cpu_initialize();
 
 	if (retval < 0){
 		pr_err("Failed SetupMX6Q\n");
@@ -127,9 +151,9 @@ static int __init FAD_Init(void)
 	}
 
 
-	// Set up Laser IRQ
+	//Set up Laser IRQ
 	retval = InitLaserIrq(gpDev);
-	if (retval == FALSE) {
+	if (retval) {
 		pr_err("Failed to request Laser IRQ\n");
 		retval = -ENOLASERIRQ;
 		goto EXIT_NO_LASERIRQ;
@@ -139,7 +163,7 @@ static int __init FAD_Init(void)
 
 	// Set up Digital I/O IRQ
 	retval = InitDigitalIOIrq(gpDev);
-	if (retval == FALSE) {
+	if (retval) {
 		pr_err("Failed to request DIGIN_1 IRQ\n");
 		retval=-ENODIGIOIRQ;
 		goto EXIT_NO_DIGIOIRQ;
@@ -159,19 +183,11 @@ EXIT_NO_LASERIRQ:
 		free_irq(gpio_to_irq(LASER_ON), gpDev);
 
 EXIT_OUT_INIT:
-	// Init hardware
-	if (cpu_is_mx51()){
-		InvSetupMX51(gpDev);
-	} else if (cpu_is_imx6s()){
-		InvSetupMX6S(gpDev);
-	} else{
-		InvSetupMX6Q(gpDev);
-	}
-
+	cpu_deinitialize();
 EXIT_OUT_DEVICE:
 	device_destroy(gpDev->fad_class, gpDev->fad_dev);
 EXIT_OUT_PLATFORMADD:
-	platform_device_del(gpDev->pLinuxDevice);
+	platform_device_unregister(gpDev->pLinuxDevice);
 EXIT_OUT_PLATFORMALLOC:
 EXIT_OUT_ADDEVICE:
 	cdev_del(&gpDev->fad_cdev);
@@ -190,13 +206,14 @@ static void __devexit FAD_Deinit(void)
 {
 	pr_info("FAD_Deinit\n");
 
-	gpDev->pCleanupHW(gpDev);
-	i2c_put_adapter(gpDev->hI2C1);
-	i2c_put_adapter(gpDev->hI2C2);
+
+	cpu_deinitialize();
+	/* gpDev->pCleanupHW(gpDev); */
+
 	
+	/* unregister_chrdev_region(gpDev->fad_dev, 1); */
 	device_destroy(gpDev->fad_class, gpDev->fad_dev);
 	class_destroy(gpDev->fad_class);
-	unregister_chrdev_region(gpDev->fad_dev, 1);
 	platform_device_unregister(gpDev->pLinuxDevice);
 	kfree(gpDev);
 	gpDev = NULL;

@@ -286,6 +286,11 @@ int SetupMX51(PFAD_HW_INDEP_INFO pInfo)
 	return 0;
 }
 
+void InvSetupMX51(PFAD_HW_INDEP_INFO pInfo)
+{
+	pr_err("Can not handle deinitialization..\n");
+}
+
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 {
 	// Laser ON

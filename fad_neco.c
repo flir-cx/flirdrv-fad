@@ -146,6 +146,8 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 
 void InvSetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 {
+	i2c_put_adapter(pInfo->hI2C1);
+	i2c_put_adapter(pInfo->hI2C2);
 }
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)

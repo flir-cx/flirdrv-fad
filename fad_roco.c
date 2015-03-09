@@ -113,15 +113,13 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 			pr_err("DIGIN1 can not be used\n");
 		gpio_request(DIGIN_1, "DIGIN1");
 		gpio_direction_input(DIGIN_1);
+	}
+
+	if (pInfo->bHasDigitalIO) {
 		if (gpio_is_valid(DIGOUT_1) == 0)
 			pr_err("DIGOUT1 can not be used\n");
 		gpio_request(DIGOUT_1, "DIGOUT1");
 		gpio_direction_input(DIGOUT_1);
-	}
-
-	if (pInfo->bHasBuzzer) {
-//        DDKIomuxSetPinMux(FLIR_IOMUX_PIN_PWM_BUZZER);
-//        DDKIomuxSetPadConfig(FLIR_IOMUX_PAD_PWM_BUZZER);
 	}
 
 	BspGetSubjBackLightLevel(&pInfo->Keypad_bl_low,
@@ -150,6 +148,13 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 {
+//		free_irq(gpio_to_irq(LASER_ON), pInfo);
+	gpio_free(LASER_ON);
+	gpio_free(PIN_3V6A_EN);
+	gpio_free(DIGIN_1);
+	gpio_free(DIGOUT_1);
+
+
 	i2c_put_adapter(pInfo->hI2C1);
 	i2c_put_adapter(pInfo->hI2C2);
 
@@ -157,21 +162,7 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 
 void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
 {
-	// Laser ON
-	if (pInfo->bHasLaser) {
-		free_irq(gpio_to_irq(LASER_ON), pInfo);
-		gpio_free(LASER_ON);
-	}
-
-	if (pInfo->bHas5VEnable) {
-		gpio_free(PIN_3V6A_EN);
-	}
-
-	if (pInfo->bHasDigitalIO) {
-		free_irq(gpio_to_irq(DIGIN_1), pInfo);
-		gpio_free(DIGIN_1);
-		gpio_free(DIGOUT_1);
-	}
+	pr_warn("CleanupHW handled by unloading the FAD kernel module...");
 }
 
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
