@@ -118,7 +118,10 @@ static int __init FAD_Init(void)
 		goto EXIT_OUT;
 	}
 
-	alloc_chrdev_region(&pInfo->fad_dev, 0, 1, "fad");
+	retval = alloc_chrdev_region(&pInfo->fad_dev, 0, 1, "fad");
+	if(retval) {
+		goto EXIT_OUT_ALLOC_CHRDEVICE;
+	}
 	cdev_init(&pInfo->fad_cdev, &fad_fops);
 	pInfo->fad_cdev.owner = THIS_MODULE;
 	pInfo->fad_cdev.ops = &fad_fops;
@@ -179,8 +182,9 @@ EXIT_OUT_PLATFORMADD:
 EXIT_OUT_PLATFORMALLOC:
 EXIT_OUT_ADDEVICE:
 	cdev_del(&pInfo->fad_cdev);
+EXIT_OUT_ALLOC_CHRDEVICE:
 EXIT_OUT:
-	return -1;
+	return retval;
 
 }
 
