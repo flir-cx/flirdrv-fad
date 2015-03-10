@@ -38,7 +38,7 @@ static unsigned int FadPoll(struct file *filp, poll_table * pt);
 static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
 		       loff_t * f_pos);
 
-static PFAD_HW_INDEP_INFO pInfo;
+static PFAD_HW_INDEP_INFO gpDev;
 
 static struct file_operations fad_fops = {
 	.owner = THIS_MODULE,
@@ -62,20 +62,20 @@ static int cpu_initialize(void)
 	int retval;
 
 	if (cpu_is_imx6s()){
-		pInfo->bHasDigitalIO = TRUE;
-		pInfo->bHasKAKALed = TRUE;
+		gpDev->bHasDigitalIO = TRUE;
+		gpDev->bHasKAKALed = TRUE;
 
-		retval = SetupMX6S(pInfo);
+		retval = SetupMX6S(gpDev);
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
-		/* pInfo->bHasLaser = TRUE; */
-		/* pInfo->bHasGPS = TRUE; */
-		/* pInfo->bHasBuzzer = TRUE; */
-		/* pInfo->bHasKpBacklight = TRUE; */
-		/* pInfo->bHasSoftwareControlledLaser = TRUE; */
+		/* gpDev->bHasLaser = TRUE; */
+		/* gpDev->bHasGPS = TRUE; */
+		/* gpDev->bHasBuzzer = TRUE; */
+		/* gpDev->bHasKpBacklight = TRUE; */
+		/* gpDev->bHasSoftwareControlledLaser = TRUE; */
 
-		pInfo->node = of_find_compatible_node(NULL, NULL, "flir,fad");
-		retval = SetupMX6Q(pInfo);
+		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
+		retval = SetupMX6Q(gpDev);
 #else
 		pr_error("flirdrv-fad: Missing devicetree configuration\n");
 #endif
@@ -93,11 +93,11 @@ static int cpu_initialize(void)
 static void cpu_deinitialize(void)
 {
 	if (cpu_is_imx6s()){
-		InvSetupMX6S(pInfo);
+		InvSetupMX6S(gpDev);
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
-		of_node_put(pInfo->node);
-		InvSetupMX6Q(pInfo);
+		of_node_put(gpDev->node);
+		InvSetupMX6Q(gpDev);
 #endif
 	} else{
 		pr_info("Unknown System CPU\n");
@@ -119,45 +119,45 @@ static int __init FAD_Init(void)
 	pr_info("FAD_Init\n");
 
 	// Allocate (and zero-initiate) our control structure.
-	pInfo = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
+	gpDev = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
 
-	if (! pInfo) {
+	if (! gpDev) {
 		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
 		goto EXIT_OUT;
 	}
 
-	retval = alloc_chrdev_region(&pInfo->fad_dev, 0, 1, "fad");
+	retval = alloc_chrdev_region(&gpDev->fad_dev, 0, 1, "fad");
 	if(retval) {
 		goto EXIT_OUT_ALLOC_CHRDEVICE;
 	}
-	cdev_init(&pInfo->fad_cdev, &fad_fops);
-	pInfo->fad_cdev.owner = THIS_MODULE;
-	pInfo->fad_cdev.ops = &fad_fops;
+	cdev_init(&gpDev->fad_cdev, &fad_fops);
+	gpDev->fad_cdev.owner = THIS_MODULE;
+	gpDev->fad_cdev.ops = &fad_fops;
 
-	retval = cdev_add(&pInfo->fad_cdev, pInfo->fad_dev, 1);
+	retval = cdev_add(&gpDev->fad_cdev, gpDev->fad_dev, 1);
 
 	if (retval) {
 		pr_err("flirdrv-fad: Error adding device driver\n");
 		goto EXIT_OUT_ADDEVICE;
 	}
 
-	pInfo->pLinuxDevice = platform_device_alloc("fad", 1);
-	if (pInfo->pLinuxDevice == NULL) {
+	gpDev->pLinuxDevice = platform_device_alloc("fad", 1);
+	if (gpDev->pLinuxDevice == NULL) {
 		pr_err("flirdrv-fad: Error adding allocating device\n");
 		goto EXIT_OUT_PLATFORMALLOC;
 	}
 
-	retval = platform_device_add(pInfo->pLinuxDevice);
+	retval = platform_device_add(gpDev->pLinuxDevice);
 	if(retval) {
 		pr_err("flirdrv-fad: Error adding platform device\n");
 		goto EXIT_OUT_PLATFORMADD;
 	}
 
-	pr_debug("flirdrv-fad: FAD driver device id %d.%d added\n", MAJOR(pInfo->fad_dev),
-		 MINOR(pInfo->fad_dev));
-	pInfo->fad_class = class_create(THIS_MODULE, "fad");
+	pr_debug("flirdrv-fad: FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
+		 MINOR(gpDev->fad_dev));
+	gpDev->fad_class = class_create(THIS_MODULE, "fad");
 	
-	dev = device_create(pInfo->fad_class, NULL, pInfo->fad_dev, NULL, "fad0");
+	dev = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
 
 	if(dev == NULL) {
 		pr_err("flirdrv-fad: Device creation failed\n");
@@ -165,11 +165,11 @@ static int __init FAD_Init(void)
 	}
 
 	// initialize this device instance
-	sema_init(&pInfo->semDevice, 1);
-	sema_init(&pInfo->semIOport, 1);
+	sema_init(&gpDev->semDevice, 1);
+	sema_init(&gpDev->semIOport, 1);
 
 	// init wait queue
-	init_waitqueue_head(&pInfo->wq);
+	init_waitqueue_head(&gpDev->wq);
 
 	retval = cpu_initialize();
 
@@ -184,12 +184,12 @@ static int __init FAD_Init(void)
 EXIT_OUT_INIT:
 	cpu_deinitialize();
 EXIT_OUT_DEVICE:
-	device_destroy(pInfo->fad_class, pInfo->fad_dev);
+	device_destroy(gpDev->fad_class, gpDev->fad_dev);
 EXIT_OUT_PLATFORMADD:
-	platform_device_unregister(pInfo->pLinuxDevice);
+	platform_device_unregister(gpDev->pLinuxDevice);
 EXIT_OUT_PLATFORMALLOC:
 EXIT_OUT_ADDEVICE:
-	cdev_del(&pInfo->fad_cdev);
+	cdev_del(&gpDev->fad_cdev);
 EXIT_OUT_ALLOC_CHRDEVICE:
 EXIT_OUT:
 	return retval;
@@ -210,12 +210,12 @@ static void __devexit FAD_Deinit(void)
 	cpu_deinitialize();
 
 	
-	unregister_chrdev_region(pInfo->fad_dev, 1);
-	device_destroy(pInfo->fad_class, pInfo->fad_dev);
-	class_destroy(pInfo->fad_class);
-	platform_device_unregister(pInfo->pLinuxDevice);
-	kfree(pInfo);
-	pInfo = NULL;
+	unregister_chrdev_region(gpDev->fad_dev, 1);
+	device_destroy(gpDev->fad_class, gpDev->fad_dev);
+	class_destroy(gpDev->fad_class);
+	platform_device_unregister(gpDev->pLinuxDevice);
+	kfree(gpDev);
+	gpDev = NULL;
 }
 
 
@@ -223,14 +223,14 @@ static void __devexit FAD_Deinit(void)
 /** 
  * DOIOControl
  * 
- * @param pInfo 
+ * @param gpDev 
  * @param Ioctl 
  * @param pBuf 
  * @param pUserBuf 
  * 
  * @return 
  */
-static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
+static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			 DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
 	int retval = ERROR_INVALID_PARAMETER;
@@ -239,26 +239,26 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
-		if (!pInfo->bHasLaser)
+		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->bLaserEnable =
+			LOCK(gpDev);
+			gpDev->bLaserEnable =
 			    ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
-			pInfo->pSetLaserStatus(pInfo, pInfo->bLaserEnable);
+			gpDev->pSetLaserStatus(gpDev, gpDev->bLaserEnable);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_GET_LASER_STATUS:
-		if (!pInfo->bHasLaser)
+		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->pGetLaserStatus(pInfo, (PFADDEVIOCTLLASER) pBuf);
+			LOCK(gpDev);
+			gpDev->pGetLaserStatus(gpDev, (PFADDEVIOCTLLASER) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
@@ -267,116 +267,116 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_BUZZER:
-		if (!pInfo->bHasBuzzer)
+		if (!gpDev->bHasBuzzer)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			FADDEVIOCTLBUZZER *pBuzzerData =
 			    (FADDEVIOCTLBUZZER *) pBuf;
-			LOCK(pInfo);
+			LOCK(gpDev);
 			if ((pBuzzerData->eState == BUZZER_ON) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
 				// Activate sound
-				pInfo->pSetBuzzerFrequency(pBuzzerData->usFreq,
+				gpDev->pSetBuzzerFrequency(pBuzzerData->usFreq,
 							   pBuzzerData->ucPWM);
 			}
 			if (pBuzzerData->eState == BUZZER_TIME) {
-				UNLOCK(pInfo);
+				UNLOCK(gpDev);
 				msleep(pBuzzerData->usTime);
-				LOCK(pInfo);
+				LOCK(gpDev);
 			}
 			if ((pBuzzerData->eState == BUZZER_OFF) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
 				// Switch off sound
-				pInfo->pSetBuzzerFrequency(0, 0);
+				gpDev->pSetBuzzerFrequency(0, 0);
 			}
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 			retval = ERROR_SUCCESS;
 		}
 		break;
 
 
 	case IOCTL_FAD_GET_DIG_IO_STATUS:
-		if (!pInfo->bHasDigitalIO)
+		if (!gpDev->bHasDigitalIO)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->pGetDigitalStatus((PFADDEVIOCTLDIGIO) pBuf);
+			LOCK(gpDev);
+			gpDev->pGetDigitalStatus((PFADDEVIOCTLDIGIO) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_GET_KAKA_LED:
-		if (!pInfo->bHasKAKALed)
+		if (!gpDev->bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->pGetKAKALedState(pInfo, (PFADDEVIOCTLLED) pBuf);
+			LOCK(gpDev);
+			gpDev->pGetKAKALedState(gpDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KAKA_LED:
-		if (!pInfo->bHasKAKALed)
+		if (!gpDev->bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->pSetKAKALedState(pInfo, (PFADDEVIOCTLLED) pBuf);
+			LOCK(gpDev);
+			gpDev->pSetKAKALedState(gpDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_GPS_ENABLE:
-		if (!pInfo->bHasGPS)
+		if (!gpDev->bHasGPS)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->pSetGPSEnable(((PFADDEVIOCTLGPS) pBuf)->
+			LOCK(gpDev);
+			gpDev->pSetGPSEnable(((PFADDEVIOCTLGPS) pBuf)->
 					     bGPSEnabled);
 			bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_GET_GPS_ENABLE:
-		if (!pInfo->bHasGPS)
+		if (!gpDev->bHasGPS)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->
+			LOCK(gpDev);
+			gpDev->
 			    pGetGPSEnable(&
 					  (((PFADDEVIOCTLGPS) pBuf)->
 					   bGPSEnabled));
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_LASER_ACTIVE:
-		if (!pInfo->bHasLaser)
+		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
-			pInfo->pSetLaserActive(pInfo,
+			LOCK(gpDev);
+			gpDev->pSetLaserActive(gpDev,
 					       ((FADDEVIOCTLLASERACTIVE *)
 						pBuf)->bLaserActive == TRUE);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_GET_LASER_ACTIVE:
-		if (!pInfo->bHasLaser)
+		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(pInfo);
+			LOCK(gpDev);
 			((FADDEVIOCTLLASERACTIVE *) pBuf)->bLaserActive =
-			    pInfo->pGetLaserActive(pInfo);
+			    gpDev->pGetLaserActive(gpDev);
 			retval = ERROR_SUCCESS;
-			UNLOCK(pInfo);
+			UNLOCK(gpDev);
 		}
 		break;
 
@@ -393,42 +393,42 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_GET_KP_BACKLIGHT:
-		if (!pInfo->bHasKpBacklight)
+		if (!gpDev->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    pInfo->
+			    gpDev->
 			    pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KP_BACKLIGHT:
-		if (!pInfo->bHasKpBacklight)
+		if (!gpDev->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    pInfo->
+			    gpDev->
 			    pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
 		break;
 
 	case IOCTL_FAD_GET_KP_SUBJ_BACKLIGHT:
-		if (!pInfo->bHasKpBacklight)
+		if (!gpDev->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    pInfo->pGetKeypadSubjBacklight(pInfo,
+			    gpDev->pGetKeypadSubjBacklight(gpDev,
 							   (FADDEVIOCTLSUBJBACKLIGHT
 							    *) pBuf);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KP_SUBJ_BACKLIGHT:
-		if (!pInfo->bHasKpBacklight)
+		if (!gpDev->bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    pInfo->pSetKeypadSubjBacklight(pInfo,
+			    gpDev->pSetKeypadSubjBacklight(gpDev,
 							   (FADDEVIOCTLSUBJBACKLIGHT
 							    *) pBuf);
 		}
@@ -452,8 +452,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO pInfo,
 		break;
 
 	case IOCTL_FAD_RELEASE_READ:
-		pInfo->eEvent = FAD_RESET_EVENT;
-		wake_up_interruptible(&pInfo->wq);
+		gpDev->eEvent = FAD_RESET_EVENT;
+		wake_up_interruptible(&gpDev->wq);
 		break;
 
 	default:
@@ -492,7 +492,7 @@ static long FAD_IOControl(struct file *filep,
 
 	if (retval == ERROR_SUCCESS) {
 		pr_debug("flirdrv-fad: FAD Ioctl %X\n", cmd);
-		retval = DoIOControl(pInfo, cmd, tmp, (PUCHAR) arg);
+		retval = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
 			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd, retval,
 			       _IOC_NR(cmd));
@@ -519,9 +519,9 @@ static long FAD_IOControl(struct file *filep,
  */
 static unsigned int FadPoll(struct file *filp, poll_table * pt)
 {
-	poll_wait(filp, &pInfo->wq, pt);
+	poll_wait(filp, &gpDev->wq, pt);
 
-	return (pInfo->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
+	return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
 /** 
  * FadRead
@@ -541,11 +541,11 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	if (count < 1)
 		return -EINVAL;
 	res =
-	    wait_event_interruptible(pInfo->wq, pInfo->eEvent != FAD_NO_EVENT);
+	    wait_event_interruptible(gpDev->wq, gpDev->eEvent != FAD_NO_EVENT);
 	if (res < 0)
 		return res;
-	*buf = pInfo->eEvent;
-	pInfo->eEvent = FAD_NO_EVENT;
+	*buf = gpDev->eEvent;
+	gpDev->eEvent = FAD_NO_EVENT;
 	return 1;
 }
 

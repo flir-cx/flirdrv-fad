@@ -30,33 +30,33 @@
 
 // Function prototypes
 
-static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED);
-static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED);
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
-static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
-static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo,
+static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 			   PFADDEVIOCTLLASER pLaserStatus);
-static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
-static void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable);
-static BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo);
+static void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev);
+static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
 static void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
 static DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
 static DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
-static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-static BOOL setGPSEnable(BOOL enabled);
-static BOOL getGPSEnable(BOOL * enabled);
-static void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout);
-static BOOL WdogService(PFAD_HW_INDEP_INFO pInfo);
+static BOOL setGPSEnable(BOOL on);
+static BOOL getGPSEnable(BOOL * on);
+static void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout);
+static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
 static void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium,
 				     UINT8 * pHigh);
-static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
+static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
 
 // Code
 
-int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
+int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 {
 	int retval;
 	extern struct list_head leds_list;
@@ -64,44 +64,44 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	struct led_classdev *led_cdev;
 
 
-	pInfo->pGetKAKALedState = getKAKALedState;
-	pInfo->pSetKAKALedState = setKAKALedState;
-	pInfo->pGetDigitalStatus = getDigitalStatus;
-	pInfo->pSetLaserStatus = setLaserStatus;
-	pInfo->pGetLaserStatus = getLaserStatus;
-	pInfo->pUpdateLaserOutput = updateLaserOutput;
-	pInfo->pSetBuzzerFrequency = SetBuzzerFrequency;
-	pInfo->pSetLaserActive = SetLaserActive;
-	pInfo->pGetLaserActive = GetLaserActive;
-	pInfo->pSetKeypadBacklight = SetKeypadBacklight;
-	pInfo->pGetKeypadBacklight = GetKeypadBacklight;
-	pInfo->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
-	pInfo->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
-	pInfo->pSetGPSEnable = setGPSEnable;
-	pInfo->pGetGPSEnable = getGPSEnable;
-	pInfo->pWdogInit = WdogInit;
-	pInfo->pWdogService = WdogService;
-	pInfo->pCleanupHW = CleanupHW;
+	gpDev->pGetKAKALedState = getKAKALedState;
+	gpDev->pSetKAKALedState = setKAKALedState;
+	gpDev->pGetDigitalStatus = getDigitalStatus;
+	gpDev->pSetLaserStatus = setLaserStatus;
+	gpDev->pGetLaserStatus = getLaserStatus;
+	gpDev->pUpdateLaserOutput = updateLaserOutput;
+	gpDev->pSetBuzzerFrequency = SetBuzzerFrequency;
+	gpDev->pSetLaserActive = SetLaserActive;
+	gpDev->pGetLaserActive = GetLaserActive;
+	gpDev->pSetKeypadBacklight = SetKeypadBacklight;
+	gpDev->pGetKeypadBacklight = GetKeypadBacklight;
+	gpDev->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
+	gpDev->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
+	gpDev->pSetGPSEnable = setGPSEnable;
+	gpDev->pGetGPSEnable = getGPSEnable;
+	gpDev->pWdogInit = WdogInit;
+	gpDev->pWdogService = WdogService;
+	gpDev->pCleanupHW = CleanupHW;
 
-	pInfo->hI2C1 = i2c_get_adapter(1);
-	pInfo->hI2C2 = i2c_get_adapter(2);
+	gpDev->hI2C1 = i2c_get_adapter(1);
+	gpDev->hI2C2 = i2c_get_adapter(2);
 
 	// Laser ON
-	if (pInfo->bHasLaser) {
+	if (gpDev->bHasLaser) {
 		if (gpio_is_valid(LASER_ON) == 0)
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		gpio_request(LASER_ON, "LaserON");
 		gpio_direction_input(LASER_ON);
 	}
 
-	if (pInfo->bHas5VEnable) {
+	if (gpDev->bHas5VEnable) {
 		if (gpio_is_valid(PIN_3V6A_EN) == 0)
 			pr_err("flirdrv-fad: 3V6A_EN can not be used\n");
 		gpio_request(PIN_3V6A_EN, "3V6AEN");
 		gpio_direction_output(PIN_3V6A_EN, 1);
 	}
 
-	if (pInfo->bHasDigitalIO) {
+	if (gpDev->bHasDigitalIO) {
 		if (gpio_is_valid(DIGIN_1) == 0)
 			pr_err("flirdrv-fad: DIGIN1 can not be used\n");
 		gpio_request(DIGIN_1, "DIGIN1");
@@ -112,30 +112,30 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 		gpio_direction_input(DIGOUT_1);
 	}
 
-	if (pInfo->bHasBuzzer) {
+	if (gpDev->bHasBuzzer) {
 //        DDKIomuxSetPinMux(FLIR_IOMUX_PIN_PWM_BUZZER);
 //        DDKIomuxSetPadConfig(FLIR_IOMUX_PAD_PWM_BUZZER);
 	}
 
-	BspGetSubjBackLightLevel(&pInfo->Keypad_bl_low,
-				 &pInfo->Keypad_bl_medium,
-				 &pInfo->Keypad_bl_high);
+	BspGetSubjBackLightLevel(&gpDev->Keypad_bl_low,
+				 &gpDev->Keypad_bl_medium,
+				 &gpDev->Keypad_bl_high);
 
 	// Find LEDs
 	down_read(&leds_list_lock);
 	list_for_each_entry(led_cdev, &leds_list, node) {
 		if (strcmp(led_cdev->name, "red_led") == 0)
-			pInfo->red_led_cdev = led_cdev;
+			gpDev->red_led_cdev = led_cdev;
 		else if (strcmp(led_cdev->name, "blue_led") == 0)
-			pInfo->blue_led_cdev = led_cdev;
+			gpDev->blue_led_cdev = led_cdev;
 	}
 	up_read(&leds_list_lock);
 
-	pr_info("I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
+	pr_info("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 
 	//Set up Laser IRQ
-	retval = InitLaserIrq(pInfo);
+	retval = InitLaserIrq(gpDev);
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
 	} else {
@@ -143,7 +143,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	}
 
 	// Set up Digital I/O IRQ
-	retval = InitDigitalIOIrq(pInfo);
+	retval = InitDigitalIOIrq(gpDev);
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request DIGIN_1 IRQ\n");
 	} else {
@@ -155,32 +155,32 @@ int SetupMX6S(PFAD_HW_INDEP_INFO pInfo)
 	return 0;
 }
 
-void InvSetupMX6S(PFAD_HW_INDEP_INFO pInfo)
+void InvSetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 {
-	i2c_put_adapter(pInfo->hI2C1);
-	i2c_put_adapter(pInfo->hI2C2);
+	i2c_put_adapter(gpDev->hI2C1);
+	i2c_put_adapter(gpDev->hI2C2);
 }
 
-void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
+void CleanupHW(PFAD_HW_INDEP_INFO gpDev)
 {
 	// Laser ON
-	if (pInfo->bHasLaser) {
-		free_irq(gpio_to_irq(LASER_ON), pInfo);
+	if (gpDev->bHasLaser) {
+		free_irq(gpio_to_irq(LASER_ON), gpDev);
 		gpio_free(LASER_ON);
 	}
 
-	if (pInfo->bHas5VEnable) {
+	if (gpDev->bHas5VEnable) {
 		gpio_free(PIN_3V6A_EN);
 	}
 
-	if (pInfo->bHasDigitalIO) {
-		free_irq(gpio_to_irq(DIGIN_1), pInfo);
+	if (gpDev->bHasDigitalIO) {
+		free_irq(gpio_to_irq(DIGIN_1), gpDev);
 		gpio_free(DIGIN_1);
 		gpio_free(DIGOUT_1);
 	}
 }
 
-DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	int redLed = 0;
 	int blueLed = 0;
@@ -195,29 +195,29 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
 			redLed = 1;
 		}
 	}
-	if (pInfo->red_led_cdev) {
-		pInfo->red_led_cdev->brightness = redLed;
-		pInfo->red_led_cdev->brightness_set(pInfo->red_led_cdev,
+	if (gpDev->red_led_cdev) {
+		gpDev->red_led_cdev->brightness = redLed;
+		gpDev->red_led_cdev->brightness_set(gpDev->red_led_cdev,
 						    redLed);
 	}
 
-	if (pInfo->blue_led_cdev) {
-		pInfo->blue_led_cdev->brightness = blueLed;
-		pInfo->blue_led_cdev->brightness_set(pInfo->blue_led_cdev,
+	if (gpDev->blue_led_cdev) {
+		gpDev->blue_led_cdev->brightness = blueLed;
+		gpDev->blue_led_cdev->brightness_set(gpDev->blue_led_cdev,
 						     blueLed);
 	}
 
 	return ERROR_SUCCESS;
 }
 
-DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	BOOL redLed = FALSE;
 	BOOL blueLed = FALSE;
 
-	if (pInfo->red_led_cdev && pInfo->red_led_cdev->brightness)
+	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
 		redLed = TRUE;
-	if (pInfo->blue_led_cdev && pInfo->blue_led_cdev->brightness)
+	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
 		blueLed = TRUE;
 
 	if ((blueLed == FALSE) && (redLed == FALSE)) {
@@ -244,46 +244,46 @@ void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 	pDigioStatus->usOutputState = gpio_get_value(DIGOUT_1) ? 1 : 0;
 }
 
-void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)
+void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 }
 
 // Laser button has been pressed/released.
 // In software controlled laser, we must enable/disable laser here.
-void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo)
+void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev)
 {
 }
 
-void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus)
+void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
 }
 
-BOOL setGPSEnable(BOOL enabled)
+BOOL setGPSEnable(BOOL on)
 {
 	return TRUE;
 }
 
-BOOL getGPSEnable(BOOL * enabled)
+BOOL getGPSEnable(BOOL * on)
 {
 	// GPS does not seem to receive correct signals when switching 
 	// on and off, I2C problems? Temporary fallback solution is to 
 	// Keep GPS switched on all the time.
-	*enabled = TRUE;
+	*on = TRUE;
 	return TRUE;
 }
 
-void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout)
+void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout)
 {
 #ifdef NOT_YET
 	PCSP_WDOG_REGS pWdog;
 	UINT16 wcr;
 
-	if (pInfo->pWdog == NULL) {
+	if (gpDev->pWdog == NULL) {
 		PHYSICAL_ADDRESS ioPhysicalBase = { CSP_BASE_REG_PA_WDOG1, 0 };
-		pInfo->pWdog =
+		gpDev->pWdog =
 		    MmMapIoSpace(ioPhysicalBase, sizeof(PCSP_WDOG_REGS), FALSE);
 	}
-	pWdog = pInfo->pWdog;
+	pWdog = gpDev->pWdog;
 
 	//  WDW = continue timer operation in low-power wait mode
 	//  WOE = tri-state WDOG output pin
@@ -308,19 +308,19 @@ void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout)
 	wcr |= CSP_BITFVAL(WDOG_WCR_WDE, WDOG_WCR_WDE_ENABLE);
 	OUTREG16(&pWdog->WCR, wcr);
 
-	WdogService(pInfo);
+	WdogService(gpDev);
 #endif
 }
 
-BOOL WdogService(PFAD_HW_INDEP_INFO pInfo)
+BOOL WdogService(PFAD_HW_INDEP_INFO gpDev)
 {
 #ifdef NOT_YET
 	PCSP_WDOG_REGS pWdog;
 
-	if (pInfo->pWdog == NULL) {
+	if (gpDev->pWdog == NULL) {
 		return FALSE;
 	}
-	pWdog = pInfo->pWdog;
+	pWdog = gpDev->pWdog;
 
 	// 1. write 0x5555
 	pWdog->WSR = WDOG_WSR_WSR_RELOAD1;
@@ -332,11 +332,11 @@ BOOL WdogService(PFAD_HW_INDEP_INFO pInfo)
 	return TRUE;
 }
 
-void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable)
+void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 }
 
-BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo)
+BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
 	return FALSE;
 }
@@ -383,7 +383,7 @@ void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
 #endif
 }
 
-DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
 	return 0;
@@ -397,22 +397,22 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
 //      Since this function works in parallel with the older functions setting
 //      percentage values, it copes with values that differs from the defined 
 //  subjective levels.
-DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
 	return ERROR_SUCCESS;
 }
 
 #ifdef NOT_YET
-DWORD getLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLedData)
+DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLedData)
 {
 	DWORD pinState;
 
 	DDKGpioReadDataPin(FLIR_GPIO_PIN_POWER_ON_LED, &pinState);
 
-	if (pInfo->dwLedFlash) {
+	if (gpDev->dwLedFlash) {
 		pLedData->eColor = LED_COLOR_GREEN;
-		if (pInfo->dwLedFlash < 500)
+		if (gpDev->dwLedFlash < 500)
 			pLedData->eState = LED_FLASH_FAST;
 		else
 			pLedData->eState = LED_FLASH_SLOW;
@@ -426,7 +426,7 @@ DWORD getLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLedData)
 	return ERROR_SUCCESS;
 }
 
-DWORD setLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLedData)
+DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLedData)
 {
 	DWORD dwErr = ERROR_SUCCESS;
 
@@ -438,27 +438,27 @@ DWORD setLedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLedData)
 	if ((pLedData->eColor != LED_COLOR_OFF) &&
 	    (pLedData->eState == LED_STATE_ON)) {
 		DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, 1);
-		pInfo->dwLedFlash = 0;
+		gpDev->dwLedFlash = 0;
 	} else if ((pLedData->eColor == LED_COLOR_OFF) ||
 		   (pLedData->eState == LED_STATE_OFF)) {
 		DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, 0);
-		pInfo->dwLedFlash = 0;
+		gpDev->dwLedFlash = 0;
 	} else if (pLedData->eState == LED_FLASH_SLOW) {
-		pInfo->dwLedFlash = 1000;
-		SetEvent(pInfo->hLedFlashEvent);
+		gpDev->dwLedFlash = 1000;
+		SetEvent(gpDev->hLedFlashEvent);
 	} else if (pLedData->eState == LED_FLASH_FAST) {
-		pInfo->dwLedFlash = 100;
-		SetEvent(pInfo->hLedFlashEvent);
+		gpDev->dwLedFlash = 100;
+		SetEvent(gpDev->hLedFlashEvent);
 	} else {
 		dwErr = ERROR_INVALID_PARAMETER;
-		pInfo->dwLedFlash = 0;
+		gpDev->dwLedFlash = 0;
 	}
 	return dwErr;
 }
 
 DWORD WINAPI fadFlashLed(PVOID pContext)
 {
-	PFAD_HW_INDEP_INFO pInfo = (PFAD_HW_INDEP_INFO) pContext;
+	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) pContext;
 	ULONG timeout;
 	BOOL state = FALSE;
 
@@ -466,13 +466,13 @@ DWORD WINAPI fadFlashLed(PVOID pContext)
 
 	while (TRUE) {
 		// Wait for ISR interrupt notification
-		if (pInfo->dwLedFlash == 0)
+		if (gpDev->dwLedFlash == 0)
 			timeout = INFINITE;
 		else
-			timeout = pInfo->dwLedFlash / 2;
-		WaitForSingleObject(pInfo->hLedFlashEvent, timeout);
+			timeout = gpDev->dwLedFlash / 2;
+		WaitForSingleObject(gpDev->hLedFlashEvent, timeout);
 
-		if (pInfo->dwLedFlash) {
+		if (gpDev->dwLedFlash) {
 			state = !state;
 			DDKGpioWriteDataPin(FLIR_GPIO_PIN_POWER_ON_LED, state);
 		}

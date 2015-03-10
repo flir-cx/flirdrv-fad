@@ -34,33 +34,33 @@
 // Function prototypes
 
 
-static DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED);
-static DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED);
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
-static void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus);
-static void getLaserStatus(PFAD_HW_INDEP_INFO pInfo,
+static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 			   PFADDEVIOCTLLASER pLaserStatus);
-static void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo);
-static void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable);
-static BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo);
+static void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev);
+static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
 static void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
 static DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
 static DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
-static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-static BOOL setGPSEnable(BOOL enabled);
-static BOOL getGPSEnable(BOOL * enabled);
-static void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout);
-static BOOL WdogService(PFAD_HW_INDEP_INFO pInfo);
+static BOOL setGPSEnable(BOOL on);
+static BOOL getGPSEnable(BOOL *on);
+static void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout);
+static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
 static void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium,
 				     UINT8 * pHigh);
-static void CleanupHW(PFAD_HW_INDEP_INFO pInfo);
+static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
 
 // Code
 
-int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
+int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
@@ -69,106 +69,106 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	u32 tmp;
 
 
-	pInfo->pGetKAKALedState = getKAKALedState;
-	pInfo->pSetKAKALedState = setKAKALedState;
-	pInfo->pGetDigitalStatus = getDigitalStatus;
-	pInfo->pSetLaserStatus = setLaserStatus;
-	pInfo->pGetLaserStatus = getLaserStatus;
-	pInfo->pUpdateLaserOutput = updateLaserOutput;
-	pInfo->pSetBuzzerFrequency = SetBuzzerFrequency;
-	pInfo->pSetLaserActive = SetLaserActive;
-	pInfo->pGetLaserActive = GetLaserActive;
-	pInfo->pSetKeypadBacklight = SetKeypadBacklight;
-	pInfo->pGetKeypadBacklight = GetKeypadBacklight;
-	pInfo->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
-	pInfo->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
-	pInfo->pSetGPSEnable = setGPSEnable;
-	pInfo->pGetGPSEnable = getGPSEnable;
-	pInfo->pWdogInit = WdogInit;
-	pInfo->pWdogService = WdogService;
-	pInfo->pCleanupHW = CleanupHW;
+	gpDev->pGetKAKALedState = getKAKALedState;
+	gpDev->pSetKAKALedState = setKAKALedState;
+	gpDev->pGetDigitalStatus = getDigitalStatus;
+	gpDev->pSetLaserStatus = setLaserStatus;
+	gpDev->pGetLaserStatus = getLaserStatus;
+	gpDev->pUpdateLaserOutput = updateLaserOutput;
+	gpDev->pSetBuzzerFrequency = SetBuzzerFrequency;
+	gpDev->pSetLaserActive = SetLaserActive;
+	gpDev->pGetLaserActive = GetLaserActive;
+	gpDev->pSetKeypadBacklight = SetKeypadBacklight;
+	gpDev->pGetKeypadBacklight = GetKeypadBacklight;
+	gpDev->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
+	gpDev->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
+	gpDev->pSetGPSEnable = setGPSEnable;
+	gpDev->pGetGPSEnable = getGPSEnable;
+	gpDev->pWdogInit = WdogInit;
+	gpDev->pWdogService = WdogService;
+	gpDev->pCleanupHW = CleanupHW;
 
 
 /* Configure I2C from Devicetree */
-	retval = of_property_read_u32_index(pInfo->node, "hI2C1", 0, &tmp);
+	retval = of_property_read_u32_index(gpDev->node, "hI2C1", 0, &tmp);
 	if (retval) {
 		pr_err("flirdrv-fad: couldn't read hI2C1 from DT!\n");
 		goto EXIT_I2C1;
 	}
 
-	pInfo->hI2C1 = i2c_get_adapter(tmp);
+	gpDev->hI2C1 = i2c_get_adapter(tmp);
 
-	retval = of_property_read_u32_index(pInfo->node, "hI2C2", 0, &tmp);
+	retval = of_property_read_u32_index(gpDev->node, "hI2C2", 0, &tmp);
 	if (retval) {
 		pr_err("flirdrv-fad: couldn't read hI2C2 from DT!\n");
 		goto EXIT_I2C2;
 	}
 
-	pInfo->hI2C2 = i2c_get_adapter(tmp);
+	gpDev->hI2C2 = i2c_get_adapter(tmp);
 
-	pr_info("flirdrv-fad: I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
+	pr_info("flirdrv-fad: I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 
 	/* Configure devices (bools) from DT */
 	//Do not care about return value of function
 	//If property is missing, assume device doesnt exist!
 	//Better to wrap this in separate function... (int -> bool etc...)
-	of_property_read_u32_index(pInfo->node, "hasLaser", 0, &pInfo->bHasLaser);
-	of_property_read_u32_index(pInfo->node, "HasGPS", 0, &pInfo->bHasGPS);
-	of_property_read_u32_index(pInfo->node, "Has7173", 0, &pInfo->bHas7173);
-	of_property_read_u32_index(pInfo->node, "Has5VEnable", 0, &pInfo->bHas5VEnable);
-	of_property_read_u32_index(pInfo->node, "HasDigitalIO", 0, &pInfo->bHasDigitalIO);
-	of_property_read_u32_index(pInfo->node, "HasKAKALed", 0, &pInfo->bHasKAKALed);
-	of_property_read_u32_index(pInfo->node, "HasBuzzer", 0, &pInfo->bHasBuzzer);
-	of_property_read_u32_index(pInfo->node, "HasKpBacklight",
-				   0, &pInfo->bHasKpBacklight);
-	of_property_read_u32_index(pInfo->node, "HasSoftwareControlledLaser",
-				   0, &pInfo->bHasSoftwareControlledLaser);
+	of_property_read_u32_index(gpDev->node, "hasLaser", 0, &gpDev->bHasLaser);
+	of_property_read_u32_index(gpDev->node, "HasGPS", 0, &gpDev->bHasGPS);
+	of_property_read_u32_index(gpDev->node, "Has7173", 0, &gpDev->bHas7173);
+	of_property_read_u32_index(gpDev->node, "Has5VEnable", 0, &gpDev->bHas5VEnable);
+	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
+	of_property_read_u32_index(gpDev->node, "HasKAKALed", 0, &gpDev->bHasKAKALed);
+	of_property_read_u32_index(gpDev->node, "HasBuzzer", 0, &gpDev->bHasBuzzer);
+	of_property_read_u32_index(gpDev->node, "HasKpBacklight",
+				   0, &gpDev->bHasKpBacklight);
+	of_property_read_u32_index(gpDev->node, "HasSoftwareControlledLaser",
+				   0, &gpDev->bHasSoftwareControlledLaser);
 
-	if(pInfo->bHasLaser)
+	if(gpDev->bHasLaser)
 		pr_info("flirdrv-fad: HasLaser\n");
-	if(pInfo->bHasGPS)
+	if(gpDev->bHasGPS)
 		pr_info("flirdrv-fad: HasGPS\n");
-	if(pInfo->bHas7173)
+	if(gpDev->bHas7173)
 		pr_info("flirdrv-fad: Has7173\n");
-	if(pInfo->bHas5VEnable)
+	if(gpDev->bHas5VEnable)
 		pr_info("flirdrv-fad: Has5VEnable\n");
-	if(pInfo->bHasDigitalIO)
+	if(gpDev->bHasDigitalIO)
 		pr_info("flirdrv-fad: HasDigitalIO\n");
-	if(pInfo->bHasKAKALed)
+	if(gpDev->bHasKAKALed)
 		pr_info("flirdrv-fad: HasKAKALed\n");
-	if(pInfo->bHasBuzzer)
+	if(gpDev->bHasBuzzer)
 		pr_info("flirdrv-fad: HasBuzzer\n");
-	if(pInfo->bHasKpBacklight)
+	if(gpDev->bHasKpBacklight)
 		pr_info("flirdrv-fad: HasKpBacklight\n");
-	if(pInfo->bHasSoftwareControlledLaser)
+	if(gpDev->bHasSoftwareControlledLaser)
 		pr_info("flirdrv-fad: HasSoftwareControlledLaser\n");
 
-	BspGetSubjBackLightLevel(&pInfo->Keypad_bl_low,
-				 &pInfo->Keypad_bl_medium,
-				 &pInfo->Keypad_bl_high);
+	BspGetSubjBackLightLevel(&gpDev->Keypad_bl_low,
+				 &gpDev->Keypad_bl_medium,
+				 &gpDev->Keypad_bl_high);
 
 	// Find LEDs
 	down_read(&leds_list_lock);
 	list_for_each_entry(led_cdev, &leds_list, node) {
 		if (strcmp(led_cdev->name, "red_led") == 0)
-			pInfo->red_led_cdev = led_cdev;
+			gpDev->red_led_cdev = led_cdev;
 		else if (strcmp(led_cdev->name, "blue_led") == 0)
-			pInfo->blue_led_cdev = led_cdev;
+			gpDev->blue_led_cdev = led_cdev;
 	}
 	up_read(&leds_list_lock);
 
 
 
-	if (pInfo->bHasLaser) {
+	if (gpDev->bHasLaser) {
 		int pin;
-		pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
 
 		if (gpio_is_valid(pin) == 0)
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		gpio_request(pin, "LaserON");
 		gpio_direction_input(pin);
-		retval = InitLaserIrq(pInfo);
+		retval = InitLaserIrq(gpDev);
 	}
 
 
@@ -181,13 +181,13 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	goto EXIT;
 
 EXIT_NO_LASERIRQ:
-	if(pInfo->bHasLaser){
-		FreeLaserIrq(pInfo);
+	if(gpDev->bHasLaser){
+		FreeLaserIrq(gpDev);
 	}
 
-	i2c_put_adapter(pInfo->hI2C2);
+	i2c_put_adapter(gpDev->hI2C2);
 EXIT_I2C2:
-	i2c_put_adapter(pInfo->hI2C1);
+	i2c_put_adapter(gpDev->hI2C1);
 EXIT_I2C1:
 EXIT:
 	return retval;
@@ -196,34 +196,34 @@ EXIT:
 /** 
  * Inverse setup done in SetupMX6Q...
  * 
- * @param pInfo 
+ * @param gpDev 
  */
-void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
+void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
-	if (pInfo->bHasLaser) {
+	if (gpDev->bHasLaser) {
 		int pin;
-		FreeLaserIrq(pInfo);
-		pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+		FreeLaserIrq(gpDev);
+		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
 		gpio_free(pin);
 	}
 
 
-	i2c_put_adapter(pInfo->hI2C1);
-	i2c_put_adapter(pInfo->hI2C2);
+	i2c_put_adapter(gpDev->hI2C1);
+	i2c_put_adapter(gpDev->hI2C2);
 
 }
 
-void CleanupHW(PFAD_HW_INDEP_INFO pInfo)
+void CleanupHW(PFAD_HW_INDEP_INFO gpDev)
 {
 	pr_warn("flirdrv-fad: CleanupHW handled by unloading the FAD kernel module...");
 }
 
-DWORD setKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	return 0;
 }
 
-DWORD getKAKALedState(PFAD_HW_INDEP_INFO pInfo, FADDEVIOCTLLED * pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	return 0;
 }
@@ -232,52 +232,52 @@ void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 {
 }
 
-void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)
+void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-	ledtrig_laser_ctrl(LaserStatus);
+	ledtrig_laser_ctrl(on);
 }
 
 // Laser button has been pressed/released.
 // In software controlled laser, we must enable/disable laser here.
-void updateLaserOutput(PFAD_HW_INDEP_INFO pInfo)
+void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev)
 {
 }
 
-void getLaserStatus(PFAD_HW_INDEP_INFO pInfo, PFADDEVIOCTLLASER pLaserStatus)
+void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
 }
 
-BOOL setGPSEnable(BOOL enabled)
+BOOL setGPSEnable(BOOL on)
 {
 	return TRUE;
 }
 
-BOOL getGPSEnable(BOOL * enabled)
+BOOL getGPSEnable(BOOL * on)
 {
 	// GPS does not seem to receive correct signals when switching 
 	// on and off, I2C problems? Temporary fallback solution is to 
 	// Keep GPS switched on all the time.
-	*enabled = TRUE;
+	*on = TRUE;
 	return TRUE;
 }
 
-void WdogInit(PFAD_HW_INDEP_INFO pInfo, UINT32 Timeout)
+void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout)
 {
 	pr_info("flirdrv-fad: Watchdog init deprecated\n");
 }
 
-BOOL WdogService(PFAD_HW_INDEP_INFO pInfo)
+BOOL WdogService(PFAD_HW_INDEP_INFO gpDev)
 {
 	pr_info("flirdrv-fad: WatchdogService deprecated\n");
 	return TRUE;
 }
 
-void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable)
+void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-	ledtrig_lasersw_ctrl(bEnable);
+	ledtrig_lasersw_ctrl(on);
 }
 
-BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo)
+BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
 	return FALSE;
 }
@@ -287,7 +287,7 @@ void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
 	pr_info("flirdrv-fad SetBuzzerFrequency not implemented\n");
 }
 
-DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
 	pr_info("flirdrv-fad SetKeypadSubjBacklight not implemented\n");
@@ -304,12 +304,12 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
  *    percentage values, it copes with values that differs from the defined 
  *    subjective levels.
  *
- * @param pInfo 
+ * @param gpDev 
  * @param pBacklight 
  * 
  * @return 
  */
-DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO pInfo,
+DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
 	pr_info("flirdrv-fad GetKeypadSubjBackligt not implemented\n");

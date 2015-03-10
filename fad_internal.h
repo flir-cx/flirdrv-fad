@@ -66,31 +66,31 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasKpBacklight;
 	BOOL bHasSoftwareControlledLaser;
 
-	 DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo,
+	 DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
 				   FADDEVIOCTLLED * pLED);
-	 DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * pInfo,
+	 DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
 				   FADDEVIOCTLLED * pLED);
 	void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
 	void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
 				 BOOL LaserStatus);
 	void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
 				 PFADDEVIOCTLLASER pLaserStatus);
-	void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * pInfo);
+	void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * gpDev);
 	void (*pSetBuzzerFrequency) (USHORT usFreq, UCHAR ucPWM);
-	void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo,
+	void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * gpDev,
 				 BOOL bEnable);
-	 BOOL(*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * pInfo);
+	 BOOL(*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * gpDev);
 	 DWORD(*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
 	 DWORD(*pSetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
-	 DWORD(*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo,
+	 DWORD(*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * gpDev,
 					  PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-	 DWORD(*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * pInfo,
+	 DWORD(*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * gpDev,
 					  PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
 	 BOOL(*pSetGPSEnable) (BOOL enabled);
 	 BOOL(*pGetGPSEnable) (BOOL * enabled);
-	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * pInfo, UINT32 Timeout);
-	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * pInfo);
-	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * pInfo);
+	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * gpDev, UINT32 Timeout);
+	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * gpDev);
+	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * gpDev);
 
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
@@ -102,18 +102,18 @@ typedef struct __FAD_HW_INDEP_INFO {
 #define	UNLOCK_IOPORT(pd)	up(&pd->semIOport)
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
-int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo);
-int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
-void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo);
-void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo);
+int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev);
+int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
+void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev);
+void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
-int SetupMX51(PFAD_HW_INDEP_INFO pInfo);
-int SetupMX6S(PFAD_HW_INDEP_INFO pInfo);
-int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo);
+int SetupMX51(PFAD_HW_INDEP_INFO gpDev);
+int SetupMX6S(PFAD_HW_INDEP_INFO gpDev);
+int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev);
 
-void InvSetupMX51(PFAD_HW_INDEP_INFO pInfo);
-void InvSetupMX6S(PFAD_HW_INDEP_INFO pInfo);
-void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo);
+void InvSetupMX51(PFAD_HW_INDEP_INFO gpDev);
+void InvSetupMX6S(PFAD_HW_INDEP_INFO gpDev);
+void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev);
 
 #endif

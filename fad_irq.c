@@ -29,7 +29,7 @@
 // Internal function prototypes
 static irqreturn_t fadLaserIST(int irq, void *dev_id);
 static irqreturn_t fadDigIN1IST(int irq, void *dev_id);
-static void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
+static void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event);
 
 // Code
 
@@ -38,39 +38,39 @@ static void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
  * 
  * Initialize laser irq if system hase laser
  *
- * @param pInfo 
+ * @param gpDev 
  * 
  * @return retval
  */
-int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
+int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	int ret = 0;
 	int pin;
 #ifdef CONFIG_OF
-	pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+	pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
 #else
 	pin = LASER_ON;
 #endif
-	if(pInfo->bHasLaser){
+	if(gpDev->bHasLaser){
 		ret = request_irq(gpio_to_irq(pin), fadLaserIST,
 				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
-				  "LaserON", pInfo);
+				  "LaserON", gpDev);
 	}
 	return ret;
 }
 
-void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo)
+void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	int pin;
 #ifdef CONFIG_OF
-	if (pInfo->bHasLaser){
-		pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+	if (gpDev->bHasLaser){
+		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
 	}
 #else
 	pin = LASER_ON;
 #endif
-	if (pInfo->bHasLaser){
-		free_irq(gpio_to_irq(pin), pInfo);
+	if (gpDev->bHasLaser){
+		free_irq(gpio_to_irq(pin), gpDev);
 	}
 }
 
@@ -80,46 +80,46 @@ void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo)
  * 
  * Initialize digital io irq if system requires it
  *
- * @param pInfo 
+ * @param gpDev 
  * 
  * @return retval
  */
-int InitDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
+int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	int ret = 0;
-	if (pInfo->bHasDigitalIO) {
+	if (gpDev->bHasDigitalIO) {
 		if(system_is_roco()){
 		} else {
 			ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
-				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", pInfo);
+				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", gpDev);
 		}
 	}
 	return ret;
 }
 
-void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO pInfo)
+void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
-	if (pInfo->bHasLaser){
+	if (gpDev->bHasLaser){
 		if(system_is_roco()) {
 
 		} else {
-			free_irq(gpio_to_irq(DIGIN_1), pInfo);
+			free_irq(gpio_to_irq(DIGIN_1), gpDev);
 		}
 	}
 }
 
-void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event)
+void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event)
 {
-	pInfo->eEvent = event;
-	wake_up_interruptible(&pInfo->wq);
+	gpDev->eEvent = event;
+	wake_up_interruptible(&gpDev->wq);
 }
 
 irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 {
-	PFAD_HW_INDEP_INFO pInfo = (PFAD_HW_INDEP_INFO) dev_id;
+	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
 	static BOOL bWaitForNeg = FALSE;
 
-	ApplicationEvent(pInfo, FAD_DIGIN_EVENT);
+	ApplicationEvent(gpDev, FAD_DIGIN_EVENT);
 	if (bWaitForNeg) {
 		irq_set_irq_type(gpio_to_irq(DIGIN_1),
 				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
@@ -137,10 +137,10 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 
 irqreturn_t fadLaserIST(int irq, void *dev_id)
 {
-	PFAD_HW_INDEP_INFO pInfo = (PFAD_HW_INDEP_INFO) dev_id;
+	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
 	static BOOL bWaitForNeg;
 
-	ApplicationEvent(pInfo, FAD_LASER_EVENT);
+	ApplicationEvent(gpDev, FAD_LASER_EVENT);
 	if (bWaitForNeg) {
 		irq_set_irq_type(gpio_to_irq(LASER_ON),
 				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
