@@ -67,13 +67,18 @@ static int cpu_initialize(void)
 
 		retval = SetupMX6S(pInfo);
 	} else if (cpu_is_imx6q()){
-		pInfo->bHasLaser = TRUE;
-		pInfo->bHasGPS = TRUE;
-		pInfo->bHasBuzzer = TRUE;
-		pInfo->bHasKpBacklight = TRUE;
-		pInfo->bHasSoftwareControlledLaser = TRUE;
+#ifdef CONFIG_OF
+		/* pInfo->bHasLaser = TRUE; */
+		/* pInfo->bHasGPS = TRUE; */
+		/* pInfo->bHasBuzzer = TRUE; */
+		/* pInfo->bHasKpBacklight = TRUE; */
+		/* pInfo->bHasSoftwareControlledLaser = TRUE; */
 
+		pInfo->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 		retval = SetupMX6Q(pInfo);
+#else
+		pr_error("flirdrv-fad: Missing devicetree configuration\n");
+#endif
 	} else{
 		pr_info("Unknown System CPU\n");
 		retval = -EUNKNOWNCPU;
@@ -90,7 +95,10 @@ static void cpu_deinitialize(void)
 	if (cpu_is_imx6s()){
 		InvSetupMX6S(pInfo);
 	} else if (cpu_is_imx6q()){
+#ifdef CONFIG_OF
+		of_node_put(pInfo->node);
 		InvSetupMX6Q(pInfo);
+#endif
 	} else{
 		pr_info("Unknown System CPU\n");
 	}

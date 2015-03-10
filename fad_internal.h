@@ -55,6 +55,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	FAD_EVENT_E eEvent;
 	wait_queue_head_t wq;
 
+	struct device_node *node;
 	BOOL bHasLaser;
 	BOOL bHasGPS;
 	BOOL bHas7173;
