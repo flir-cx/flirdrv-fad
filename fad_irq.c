@@ -24,7 +24,7 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include "flir-kernel-version.h"
-
+#include "linux/of_gpio.h"
 
 // Internal function prototypes
 static irqreturn_t fadLaserIST(int irq, void *dev_id);
@@ -45,8 +45,14 @@ static void ApplicationEvent(PFAD_HW_INDEP_INFO pInfo, FAD_EVENT_E event);
 int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 {
 	int ret = 0;
-	if (pInfo->bHasLaser){
-		ret = request_irq(gpio_to_irq(LASER_ON), fadLaserIST,
+	int pin;
+#ifdef CONFIG_OF
+	pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+#else
+	pin = LASER_ON;
+#endif
+	if(pInfo->bHasLaser){
+		ret = request_irq(gpio_to_irq(pin), fadLaserIST,
 				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
 				  "LaserON", pInfo);
 	}
@@ -55,8 +61,16 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 
 void FreeLaserIrq(PFAD_HW_INDEP_INFO pInfo)
 {
+	int pin;
+#ifdef CONFIG_OF
 	if (pInfo->bHasLaser){
-		free_irq(gpio_to_irq(LASER_ON), pInfo);
+		pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+	}
+#else
+	pin = LASER_ON;
+#endif
+	if (pInfo->bHasLaser){
+		free_irq(gpio_to_irq(pin), pInfo);
 	}
 }
 

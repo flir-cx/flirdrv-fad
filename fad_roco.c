@@ -24,6 +24,7 @@
 #include <linux/errno.h>
 #include <linux/leds.h>
 #include "flir-kernel-version.h"
+#include <linux/of_gpio.h>
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -65,6 +66,8 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
 	int retval;
+	u32 tmp;
+
 
 	pInfo->pGetKAKALedState = getKAKALedState;
 	pInfo->pSetKAKALedState = setKAKALedState;
@@ -85,10 +88,61 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	pInfo->pWdogService = WdogService;
 	pInfo->pCleanupHW = CleanupHW;
 
-	pInfo->hI2C1 = i2c_get_adapter(1);
-	pInfo->hI2C2 = i2c_get_adapter(2);
+
+/* Configure I2C from Devicetree */
+	retval = of_property_read_u32_index(pInfo->node, "hI2C1", 0, &tmp);
+	if (retval) {
+		pr_err("flirdrv-fad: couldn't read hI2C1 from DT!\n");
+		goto EXIT_I2C1;
+	}
+
+	pInfo->hI2C1 = i2c_get_adapter(tmp);
+
+	retval = of_property_read_u32_index(pInfo->node, "hI2C2", 0, &tmp);
+	if (retval) {
+		pr_err("flirdrv-fad: couldn't read hI2C2 from DT!\n");
+		goto EXIT_I2C2;
+	}
+
+	pInfo->hI2C2 = i2c_get_adapter(tmp);
+
+	pr_info("flirdrv-fad: I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
 
 
+	/* Configure devices (bools) from DT */
+	//Do not care about return value of function
+	//If property is missing, assume device doesnt exist!
+	//Better to wrap this in separate function... (int -> bool etc...)
+	of_property_read_u32_index(pInfo->node, "hasLaser", 0, &pInfo->bHasLaser);
+	of_property_read_u32_index(pInfo->node, "HasGPS", 0, &pInfo->bHasGPS);
+	of_property_read_u32_index(pInfo->node, "Has7173", 0, &pInfo->bHas7173);
+	of_property_read_u32_index(pInfo->node, "Has5VEnable", 0, &pInfo->bHas5VEnable);
+	of_property_read_u32_index(pInfo->node, "HasDigitalIO", 0, &pInfo->bHasDigitalIO);
+	of_property_read_u32_index(pInfo->node, "HasKAKALed", 0, &pInfo->bHasKAKALed);
+	of_property_read_u32_index(pInfo->node, "HasBuzzer", 0, &pInfo->bHasBuzzer);
+	of_property_read_u32_index(pInfo->node, "HasKpBacklight",
+				   0, &pInfo->bHasKpBacklight);
+	of_property_read_u32_index(pInfo->node, "HasSoftwareControlledLaser",
+				   0, &pInfo->bHasSoftwareControlledLaser);
+
+	if(pInfo->bHasLaser)
+		pr_info("flirdrv-fad: HasLaser\n");
+	if(pInfo->bHasGPS)
+		pr_info("flirdrv-fad: HasGPS\n");
+	if(pInfo->bHas7173)
+		pr_info("flirdrv-fad: Has7173\n");
+	if(pInfo->bHas5VEnable)
+		pr_info("flirdrv-fad: Has5VEnable\n");
+	if(pInfo->bHasDigitalIO)
+		pr_info("flirdrv-fad: HasDigitalIO\n");
+	if(pInfo->bHasKAKALed)
+		pr_info("flirdrv-fad: HasKAKALed\n");
+	if(pInfo->bHasBuzzer)
+		pr_info("flirdrv-fad: HasBuzzer\n");
+	if(pInfo->bHasKpBacklight)
+		pr_info("flirdrv-fad: HasKpBacklight\n");
+	if(pInfo->bHasSoftwareControlledLaser)
+		pr_info("flirdrv-fad: HasSoftwareControlledLaser\n");
 
 	BspGetSubjBackLightLevel(&pInfo->Keypad_bl_low,
 				 &pInfo->Keypad_bl_medium,
@@ -104,18 +158,19 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	}
 	up_read(&leds_list_lock);
 
-	pr_info("flirdrv-fad: I2C drivers %p and %p\n", pInfo->hI2C1, pInfo->hI2C2);
 
-	//Set up Laser
-	// Laser ON
+
 	if (pInfo->bHasLaser) {
-		if (gpio_is_valid(LASER_ON) == 0)
+		int pin;
+		pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+
+		if (gpio_is_valid(pin) == 0)
 			pr_err("flirdrv-fad: LaserON can not be used\n");
-		gpio_request(LASER_ON, "LaserON");
-		gpio_direction_input(LASER_ON);
+		gpio_request(pin, "LaserON");
+		gpio_direction_input(pin);
+		retval = InitLaserIrq(pInfo);
 	}
 
-	retval = InitLaserIrq(pInfo);
 
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
@@ -126,9 +181,14 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 	goto EXIT;
 
 EXIT_NO_LASERIRQ:
-	if(! system_is_roco()){
+	if(pInfo->bHasLaser){
 		FreeLaserIrq(pInfo);
 	}
+
+	i2c_put_adapter(pInfo->hI2C2);
+EXIT_I2C2:
+	i2c_put_adapter(pInfo->hI2C1);
+EXIT_I2C1:
 EXIT:
 	return retval;
 }
@@ -140,13 +200,13 @@ EXIT:
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO pInfo)
 {
-	gpio_free(LASER_ON);
-	gpio_free(PIN_3V6A_EN);
-	gpio_free(DIGIN_1);
-	gpio_free(DIGOUT_1);
+	if (pInfo->bHasLaser) {
+		int pin;
+		FreeLaserIrq(pInfo);
+		pin = of_get_named_gpio_flags(pInfo->node, "laser_on-gpios", 0, NULL);
+		gpio_free(pin);
+	}
 
-	FreeLaserIrq(pInfo);
-	FreeDigitalIOIrq(pInfo);
 
 	i2c_put_adapter(pInfo->hI2C1);
 	i2c_put_adapter(pInfo->hI2C2);
@@ -174,6 +234,7 @@ void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 
 void setLaserStatus(PFAD_HW_INDEP_INFO pInfo, BOOL LaserStatus)
 {
+	ledtrig_laser_ctrl(LaserStatus);
 }
 
 // Laser button has been pressed/released.
@@ -213,6 +274,7 @@ BOOL WdogService(PFAD_HW_INDEP_INFO pInfo)
 
 void SetLaserActive(PFAD_HW_INDEP_INFO pInfo, BOOL bEnable)
 {
+	ledtrig_lasersw_ctrl(bEnable);
 }
 
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO pInfo)
