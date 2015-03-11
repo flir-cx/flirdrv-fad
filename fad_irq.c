@@ -56,6 +56,11 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
 				  "LaserON", gpDev);
 	}
+	if(ret){
+		pr_err("flridrv-fad: Failed to register interrupt for laser...\n");
+	} else{
+		pr_info("flirdrv-fad: Registered interrupt %i for laser\n", gpio_to_irq(pin));
+	}
 	return ret;
 }
 
@@ -139,10 +144,16 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
 	static BOOL bWaitForNeg;
+	int pin;
+#ifdef CONFIG_OF
+	pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
+#else
+	pin = LASER_ON
+#endif
 
 	ApplicationEvent(gpDev, FAD_LASER_EVENT);
 	if (bWaitForNeg) {
-		irq_set_irq_type(gpio_to_irq(LASER_ON),
+		irq_set_irq_type(gpio_to_irq(pin),
 				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
 		bWaitForNeg = FALSE;
 	} else {
@@ -150,8 +161,6 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 				 IRQF_TRIGGER_LOW | IRQF_ONESHOT);
 		bWaitForNeg = TRUE;
 	}
-
-	pr_err("flirdrv-fad: fadLaserIST\n");
 
 	return IRQ_HANDLED;
 }

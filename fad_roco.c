@@ -163,19 +163,18 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->bHasLaser) {
 		int pin;
 		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
-
-		if (gpio_is_valid(pin) == 0)
+		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: LaserON can not be used\n");
-		gpio_request(pin, "LaserON");
-		gpio_direction_input(pin);
-		retval = InitLaserIrq(gpDev);
-	}
-
-
-	if (retval) {
-		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
-		retval = -ENOLASERIRQ;
-		goto EXIT_NO_LASERIRQ;
+		} else {
+			gpio_request(pin, "LaserON");
+			gpio_direction_input(pin);
+			retval = InitLaserIrq(gpDev);
+			if (retval) {
+				pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
+				retval = -ENOLASERIRQ;
+				goto EXIT_NO_LASERIRQ;
+			}
+		}
 	}
 
 	goto EXIT;
