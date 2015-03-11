@@ -148,18 +148,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 				 &gpDev->Keypad_bl_medium,
 				 &gpDev->Keypad_bl_high);
 
-	// Find LEDs
-	down_read(&leds_list_lock);
-	list_for_each_entry(led_cdev, &leds_list, node) {
-		if (strcmp(led_cdev->name, "red_led") == 0)
-			gpDev->red_led_cdev = led_cdev;
-		else if (strcmp(led_cdev->name, "blue_led") == 0)
-			gpDev->blue_led_cdev = led_cdev;
-	}
-	up_read(&leds_list_lock);
-
-
-
 	if (gpDev->bHasLaser) {
 		int pin;
 		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
