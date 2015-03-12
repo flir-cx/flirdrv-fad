@@ -25,6 +25,7 @@
 #include <linux/poll.h>
 #include <linux/version.h>
 #include "flir-kernel-version.h"
+#include <linux/leds.h>
 
 #define EUNKNOWNCPU 3
 

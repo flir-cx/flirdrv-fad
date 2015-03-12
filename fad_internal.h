@@ -72,7 +72,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 				   FADDEVIOCTLLED * pLED);
 	void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
 	void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
-				 BOOL LaserStatus);
+				 BOOL on);
 	void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
 				 PFADDEVIOCTLLASER pLaserStatus);
 	void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * gpDev);
