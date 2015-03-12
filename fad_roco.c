@@ -62,9 +62,6 @@ static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
 
 int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
-	extern struct list_head leds_list;
-	extern struct rw_semaphore leds_list_lock;
-	struct led_classdev *led_cdev;
 	int retval;
 	u32 tmp;
 
