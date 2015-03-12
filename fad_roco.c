@@ -125,25 +125,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32_index(gpDev->node, "HasSoftwareControlledLaser",
 				   0, &gpDev->bHasSoftwareControlledLaser);
 
-	if(gpDev->bHasLaser)
-		pr_info("flirdrv-fad: HasLaser\n");
-	if(gpDev->bHasGPS)
-		pr_info("flirdrv-fad: HasGPS\n");
-	if(gpDev->bHas7173)
-		pr_info("flirdrv-fad: Has7173\n");
-	if(gpDev->bHas5VEnable)
-		pr_info("flirdrv-fad: Has5VEnable\n");
-	if(gpDev->bHasDigitalIO)
-		pr_info("flirdrv-fad: HasDigitalIO\n");
-	if(gpDev->bHasKAKALed)
-		pr_info("flirdrv-fad: HasKAKALed\n");
-	if(gpDev->bHasBuzzer)
-		pr_info("flirdrv-fad: HasBuzzer\n");
-	if(gpDev->bHasKpBacklight)
-		pr_info("flirdrv-fad: HasKpBacklight\n");
-	if(gpDev->bHasSoftwareControlledLaser)
-		pr_info("flirdrv-fad: HasSoftwareControlledLaser\n");
-
 	BspGetSubjBackLightLevel(&gpDev->Keypad_bl_low,
 				 &gpDev->Keypad_bl_medium,
 				 &gpDev->Keypad_bl_high);
@@ -199,7 +180,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 			if(retval){
 				pr_err("Fail setting direction laserswitcon\n");
 			}
-
 			//TODO Error handling
 		}
 	}
