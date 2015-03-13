@@ -132,6 +132,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		} else {
+			gpDev->laser_on_gpio = pin;
 			gpio_request(pin, "LaserON");
 			gpio_direction_input(pin);
 			retval = InitLaserIrq(gpDev);
@@ -150,6 +151,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: Laser Soft On can not be used\n");
 		} else {
+			gpDev->laser_soft_gpio = pin;
 			retval = gpio_request(pin, "LaserSoftOn");
 			if(retval){
 				pr_err("Fail registering lasersofton\n");
@@ -169,6 +171,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: Laser Switch can not be used\n");
 		} else {
+			gpDev->laser_switch_gpio = pin;
 			retval = gpio_request(pin, "LaserSwitchOn");
 			if(retval){
 				pr_err("Fail registering laserswitchon\n");
@@ -204,23 +207,17 @@ EXIT:
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
 	if (gpDev->bHasLaser) {
-		int pin;
 		FreeLaserIrq(gpDev);
-		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
-		gpio_free(pin);
 	}
-	if (gpDev->bHasLaser) {
-		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "laser_soft-gpios", 0, NULL);
-		gpio_free(pin);
+	if(gpDev->laser_on_gpio){
+		gpio_free(gpDev->laser_on_gpio);
 	}
-	if (gpDev->bHasLaser) {
-		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "laser_switch-gpios", 0, NULL);
-		gpio_free(pin);
+	if(gpDev->laser_soft_gpio){
+		gpio_free(gpDev->laser_soft_gpio);
 	}
-
-	
+	if(gpDev->laser_soft_gpio){
+		gpio_free(gpDev->laser_switch_gpio);
+	}
 
 	i2c_put_adapter(gpDev->hI2C1);
 	i2c_put_adapter(gpDev->hI2C2);
@@ -249,9 +246,8 @@ void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 //	SetI2CIoport(pInfo, LASER_SWITCH_ON, LaserStatus);
-	int pin;
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_switch-gpios",0,NULL);
-	gpio_set_value_cansleep(pin, on);
+	if(gpDev->laser_switch_gpio)
+		gpio_set_value_cansleep(gpDev->laser_switch_gpio, on);
 }
 
 // Laser button has been pressed/released.
@@ -273,15 +269,15 @@ void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev)
 }
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
-	int pin;
-	int value;
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
-	value=gpio_get_value_cansleep(pin) == 0;
+	int value=0;
+	if(gpDev->laser_on_gpio)
+		value = (gpio_get_value_cansleep(gpDev->laser_on_gpio) == 0);
+
 	pLaserStatus->bLaserIsOn = value;
 
-//	pLaserStatus->bLaserPowerEnabled = GetI2CIoport(pInfo, LASER_SWITCH_ON);
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_switch-gpios", 0, NULL);
-	value = (gpio_get_value_cansleep(pin));
+	if(gpDev->laser_switch_gpio)
+		value = gpio_get_value_cansleep(gpDev->laser_switch_gpio == 0);
+
 	pLaserStatus->bLaserPowerEnabled = value;
 }
 
@@ -312,12 +308,9 @@ BOOL WdogService(PFAD_HW_INDEP_INFO gpDev)
 
 void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-//	SetI2CIoport(pInfo, LASER_SOFT_ON, bEnable);
-
-	int pin;
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_soft-gpios",0,NULL);
-	gpio_set_value_cansleep(pin, on);
-
+	if(gpDev->laser_soft_gpio){
+		gpio_set_value_cansleep(gpDev->laser_soft_gpio, on);
+	}
 }
 
 /** 
@@ -330,11 +323,11 @@ void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
  */
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
-//	return GetI2CIoport(pInfo, LASER_SOFT_ON);
-
-	int pin;
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_soft-gpios",0,NULL);
-	return (gpio_get_value_cansleep(pin)) ;
+	int value = 0;
+	if(gpDev->laser_soft_gpio){
+		value = gpio_get_value_cansleep(gpDev->laser_soft_gpio);
+	}
+	return value;
 }
 
 void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
