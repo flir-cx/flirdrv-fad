@@ -47,7 +47,7 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 	int ret = 0;
 	int pin;
 #ifdef CONFIG_OF
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
+	pin = gpDev->laser_on_gpio;
 #else
 	pin = LASER_ON;
 #endif
@@ -68,9 +68,7 @@ void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	int pin;
 #ifdef CONFIG_OF
-	if (gpDev->bHasLaser){
-		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
-	}
+	pin = gpDev->laser_on_gpio;
 #else
 	pin = LASER_ON;
 #endif
@@ -146,7 +144,7 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 	static BOOL bWaitForNeg;
 	int pin;
 #ifdef CONFIG_OF
-	pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
+	pin = gpDev->laser_on_gpio;
 #else
 	pin = LASER_ON
 #endif
