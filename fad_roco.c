@@ -25,6 +25,9 @@
 #include <linux/leds.h>
 #include "flir-kernel-version.h"
 #include <linux/of_gpio.h>
+#include <linux/of.h>
+#include <linux/regulator/consumer.h>
+#include <linux/regulator/of_regulator.h>
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -182,6 +185,17 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		}
 	}
 
+	gpDev->reg_opt5v0 = regulator_get(gpDev->dev, "rori_opt_5v0");
+	if(IS_ERR(gpDev->reg_opt5v0))
+	{
+		pr_err("Error on rori_opt_5v0 get\n");
+	}
+
+	retval = regulator_enable(gpDev->reg_opt5v0);
+	if (retval){
+		pr_err("flirdrv-fad: Could not enable opt_5v0 regulators\n");
+	}
+
 	goto EXIT;
 
 EXIT_NO_LASERIRQ:
@@ -204,6 +218,11 @@ EXIT:
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
+	regulator_disable(gpDev->reg_opt5v0);
+	regulator_put(gpDev->reg_opt5v0);
+
+
+
 	if (gpDev->bHasLaser) {
 		FreeLaserIrq(gpDev);
 	}

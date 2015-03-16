@@ -35,6 +35,7 @@ extern DWORD g_RestartReason;
 
 // Internal variable
 typedef struct __FAD_HW_INDEP_INFO {
+	struct device *dev;
 	struct platform_device *pLinuxDevice;
 	struct cdev fad_cdev;	// Linux character device
 	struct class *fad_class;
@@ -60,6 +61,14 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int laser_on_gpio;
 	int laser_soft_gpio;
 	int laser_switch_gpio;
+
+	struct regulator *reg_vcm1i2c;
+	struct regulator *reg_vcm2i2c;
+
+	struct regulator *reg_opt5v0;
+	struct regulator *reg_vcm;
+
+
 #endif
 	BOOL bHasLaser;
 	BOOL bHasGPS;

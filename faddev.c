@@ -69,12 +69,6 @@ static int cpu_initialize(void)
 		retval = SetupMX6S(gpDev);
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
-		/* gpDev->bHasLaser = TRUE; */
-		/* gpDev->bHasGPS = TRUE; */
-		/* gpDev->bHasBuzzer = TRUE; */
-		/* gpDev->bHasKpBacklight = TRUE; */
-		/* gpDev->bHasSoftwareControlledLaser = TRUE; */
-
 		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 		retval = SetupMX6Q(gpDev);
 #else
@@ -159,6 +153,7 @@ static int __init FAD_Init(void)
 	gpDev->fad_class = class_create(THIS_MODULE, "fad");
 	
 	dev = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
+	gpDev->dev = dev;
 
 	if(dev == NULL) {
 		pr_err("flirdrv-fad: Device creation failed\n");
@@ -207,10 +202,7 @@ static void __devexit FAD_Deinit(void)
 {
 	pr_info("FAD_Deinit\n");
 
-
 	cpu_deinitialize();
-
-	
 	unregister_chrdev_region(gpDev->fad_dev, 1);
 	device_destroy(gpDev->fad_class, gpDev->fad_dev);
 	class_destroy(gpDev->fad_class);
@@ -347,10 +339,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->
-			    pGetGPSEnable(&
-					  (((PFADDEVIOCTLGPS) pBuf)->
-					   bGPSEnabled));
+			gpDev->pGetGPSEnable(&(((PFADDEVIOCTLGPS) pBuf)->
+					       bGPSEnabled));
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
