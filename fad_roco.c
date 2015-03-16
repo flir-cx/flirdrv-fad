@@ -160,7 +160,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 			if(retval){
 				pr_err("Fail setting direction lasersofton\n");
 			}
-			//TODO Error handling
 		}
 	}
 
@@ -180,7 +179,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 			if(retval){
 				pr_err("Fail setting direction laserswitcon\n");
 			}
-			//TODO Error handling
 		}
 	}
 
