@@ -190,10 +190,12 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	{
 		pr_err("Error on rori_opt_5v0 get\n");
 	}
-
-	retval = regulator_enable(gpDev->reg_opt5v0);
-	if (retval){
-		pr_err("flirdrv-fad: Could not enable opt_5v0 regulators\n");
+	else
+	{
+		retval = regulator_enable(gpDev->reg_opt5v0);
+		if (retval){
+			pr_err("flirdrv-fad: Could not enable opt_5v0 regulators\n");
+		}
 	}
 
 	goto EXIT;
