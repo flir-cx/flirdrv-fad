@@ -220,9 +220,13 @@ EXIT:
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
-	regulator_disable(gpDev->reg_opt5v0);
-	regulator_put(gpDev->reg_opt5v0);
-
+	if(IS_ERR(gpDev->reg_opt5v0))
+	{
+		pr_err("Error on rori_opt_5v0 get\n");
+	} else {
+		regulator_disable(gpDev->reg_opt5v0);
+		regulator_put(gpDev->reg_opt5v0);
+	};
 
 
 	if (gpDev->bHasLaser) {
