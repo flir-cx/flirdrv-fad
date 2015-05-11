@@ -447,6 +447,19 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		wake_up_interruptible(&gpDev->wq);
 		break;
 
+
+	case IOCTL_FAD_SET_TORCH_STATE:
+		if (!gpDev->bHasTorch)
+			retval = ERROR_NOT_SUPPORTED;
+		else {
+			LOCK(gpDev);
+			gpDev->pSetTorchState(gpDev, ((PFADDEVIOCTLTORCH) pBuf)->bTorchEnabled);
+//			bGPSEnable = ((PFADDEVIOCTLTORCH) pBuf)->bGPSEnabled;
+			retval = ERROR_SUCCESS;
+			UNLOCK(gpDev);
+		}
+		break;
+
 	default:
 		pr_err("flirdrv-fad: FAD: Unsupported IOCTL code %lX\n", Ioctl);
 		retval = ERROR_NOT_SUPPORTED;
