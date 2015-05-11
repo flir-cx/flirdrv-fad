@@ -60,7 +60,7 @@ static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
 static void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium,
 				     UINT8 * pHigh);
 static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
-static void setTorchState(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+
 // Code
 
 int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
@@ -87,7 +87,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pWdogInit = WdogInit;
 	gpDev->pWdogService = WdogService;
 	gpDev->pCleanupHW = CleanupHW;
-	gpDev->pSetTorchState = setTorchState;
+
 
 /* Configure I2C from Devicetree */
 	retval = of_property_read_u32_index(gpDev->node, "hI2C1", 0, &tmp);
@@ -124,25 +124,10 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 				   0, &gpDev->bHasKpBacklight);
 	of_property_read_u32_index(gpDev->node, "HasSoftwareControlledLaser",
 				   0, &gpDev->bHasSoftwareControlledLaser);
-	of_property_read_u32_index(gpDev->node, "HasTorch",
-				   0, &gpDev->bHasTorch);
 
 	BspGetSubjBackLightLevel(&gpDev->Keypad_bl_low,
 				 &gpDev->Keypad_bl_medium,
 				 &gpDev->Keypad_bl_high);
-
-	if (gpDev->bHasTorch) {
-		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "led_torch-gpios", 0, NULL);
-		if (gpio_is_valid(pin) == 0){
-			pr_err("flirdrv-fad: Torch can not be used\n");
-		} else {
-			pr_err("Registering torch\n");
-			gpDev->torch_on_gpio = pin;
-			gpio_request(pin, "Torch");
-			gpio_direction_output(pin,0);
-		}
-	}
 
 	if (gpDev->bHasLaser) {
 		int pin;
@@ -255,10 +240,6 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	}
 	if(gpDev->laser_soft_gpio){
 		gpio_free(gpDev->laser_switch_gpio);
-	}
-	if(gpDev->torch_on_gpio){
-		gpio_set_value_cansleep(gpDev->torch_on_gpio, 0);
-		gpio_free(gpDev->torch_on_gpio);
 	}
 
 	i2c_put_adapter(gpDev->hI2C1);
@@ -424,9 +405,4 @@ void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
 	*pLow = 10;
 	*pMedium = 40;
 	*pHigh = 75;
-}
-
-static void setTorchState(PFAD_HW_INDEP_INFO gpDev, BOOL on)
-{
-	gpio_set_value_cansleep(gpDev->torch_on_gpio, on);
 }

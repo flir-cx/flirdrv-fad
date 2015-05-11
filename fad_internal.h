@@ -61,7 +61,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int laser_on_gpio;
 	int laser_soft_gpio;
 	int laser_switch_gpio;
-	int torch_on_gpio;
 
 	struct regulator *reg_vcm1i2c;
 	struct regulator *reg_vcm2i2c;
@@ -80,7 +79,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasBuzzer;
 	BOOL bHasKpBacklight;
 	BOOL bHasSoftwareControlledLaser;
-	BOOL bHasTorch;
+
 	 DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
 				   FADDEVIOCTLLED * pLED);
 	 DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
@@ -106,7 +105,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * gpDev, UINT32 Timeout);
 	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * gpDev);
 	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * gpDev);
-	void(*pSetTorchState) (struct __FAD_HW_INDEP_INFO *gpDev, BOOL on);
 
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
