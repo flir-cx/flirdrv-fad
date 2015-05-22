@@ -65,7 +65,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	struct regulator *reg_vcm1i2c;
 	struct regulator *reg_vcm2i2c;
 
-	struct regulator *reg_opt5v0;
+	struct regulator *reg_opt3v6;
 	struct regulator *reg_vcm;
 
 
