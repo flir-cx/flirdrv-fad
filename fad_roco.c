@@ -207,16 +207,16 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		}
 	}
 
-	gpDev->reg_opt5v0 = regulator_get(gpDev->dev, "rori_opt_5v0");
-	if(IS_ERR(gpDev->reg_opt5v0))
+	gpDev->reg_opt3v6 = regulator_get(gpDev->dev, "rori_opt_3v6");
+	if(IS_ERR(gpDev->reg_opt3v6))
 	{
-		pr_err("Error on rori_opt_5v0 get\n");
+		pr_err("Error on rori_opt_3v6 get\n");
 	}
 	else
 	{
-		retval = regulator_enable(gpDev->reg_opt5v0);
+		retval = regulator_enable(gpDev->reg_opt3v6);
 		if (retval){
-			pr_err("flirdrv-fad: Could not enable opt_5v0 regulators\n");
+			pr_err("flirdrv-fad: Could not enable rori_opt_3v6 regulators\n");
 		}
 	}
 
@@ -242,12 +242,12 @@ EXIT:
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
-	if(IS_ERR(gpDev->reg_opt5v0))
+	if(IS_ERR(gpDev->reg_opt3v6))
 	{
 		pr_err("Error on rori_opt_5v0 get\n");
 	} else {
-		regulator_disable(gpDev->reg_opt5v0);
-		regulator_put(gpDev->reg_opt5v0);
+		regulator_disable(gpDev->reg_opt3v6);
+		regulator_put(gpDev->reg_opt3v6);
 	};
 
 
