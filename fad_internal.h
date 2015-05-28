@@ -68,7 +68,8 @@ typedef struct __FAD_HW_INDEP_INFO {
 	struct regulator *reg_opt5v0;
 	struct regulator *reg_vcm;
 
-
+	struct led_classdev *pijk_cdev;
+	struct led_classdev *pike_cdev;
 #endif
 	BOOL bHasLaser;
 	BOOL bHasGPS;

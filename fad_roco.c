@@ -28,6 +28,7 @@
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/leds.h>
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -88,6 +89,27 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pWdogService = WdogService;
 	gpDev->pCleanupHW = CleanupHW;
 
+
+//	pr_err("Searching for LEDs\n");
+    extern struct list_head leds_list;
+    extern struct rw_semaphore leds_list_lock;
+    struct led_classdev *led_cdev;
+    down_read(&leds_list_lock);
+    list_for_each_entry(led_cdev, &leds_list, node) {
+	    if (strcmp(led_cdev->name, "pikeled") == 0){
+		    gpDev->pike_cdev = led_cdev;
+
+	    } else if (strcmp(led_cdev->name, "pijkled") == 0){
+		    gpDev->pijk_cdev = led_cdev;
+	    }
+    }
+    up_read(&leds_list_lock);
+
+    gpDev->pijk_cdev->brightness = 80;
+    gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
+    gpDev->pike_cdev->brightness = 80;
+    gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
+//
 
 /* Configure I2C from Devicetree */
 	retval = of_property_read_u32_index(gpDev->node, "hI2C1", 0, &tmp);
