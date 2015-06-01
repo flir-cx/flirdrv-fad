@@ -66,6 +66,9 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
 	int retval;
 	u32 tmp;
+	extern struct list_head leds_list;
+	extern struct rw_semaphore leds_list_lock;
+	struct led_classdev *led_cdev;
 
 
 	gpDev->pGetKAKALedState = getKAKALedState;
@@ -89,9 +92,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 
 
 //	pr_err("Searching for LEDs\n");
-    extern struct list_head leds_list;
-    extern struct rw_semaphore leds_list_lock;
-    struct led_classdev *led_cdev;
     down_read(&leds_list_lock);
     list_for_each_entry(led_cdev, &leds_list, node) {
 	    if (strcmp(led_cdev->name, "pikeled") == 0){
