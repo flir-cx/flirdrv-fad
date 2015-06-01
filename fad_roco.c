@@ -48,8 +48,6 @@ static void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev);
 static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
 static void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
-static DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
-static DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
 static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
 static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
@@ -79,8 +77,8 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pSetBuzzerFrequency = SetBuzzerFrequency;
 	gpDev->pSetLaserActive = SetLaserActive;
 	gpDev->pGetLaserActive = GetLaserActive;
-	gpDev->pSetKeypadBacklight = SetKeypadBacklight;
-	gpDev->pGetKeypadBacklight = GetKeypadBacklight;
+	gpDev->pSetKeypadBacklight = NULL;
+	gpDev->pGetKeypadBacklight = NULL;
 	gpDev->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
 	gpDev->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
 	gpDev->pSetGPSEnable = setGPSEnable;
