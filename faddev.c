@@ -389,7 +389,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		else {
 			retval =
 			    gpDev->
-			    pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
+				pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
 		break;
 

@@ -381,8 +381,30 @@ void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
 DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
-	pr_info("flirdrv-fad SetKeypadSubjBacklight not implemented\n");
-	return 0;
+	int brightness;
+//	pr_err("flirdrv-fad: SetKeypadSubjBacklight!\n");
+	switch(pBacklight->subjectiveBacklight){
+	case KP_SUBJ_LOW:
+		brightness=gpDev->Keypad_bl_low;
+		break;
+	case KP_SUBJ_MEDIUM:
+		brightness=gpDev->Keypad_bl_medium;
+		break;
+	case KP_SUBJ_HIGH:
+		brightness=gpDev->Keypad_bl_high;
+		break;
+	default:
+		brightness=0;
+		break;
+	}
+
+	gpDev->pijk_cdev->brightness = brightness;
+	gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
+
+	gpDev->pike_cdev->brightness = brightness;
+	gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
+
+	return ERROR_SUCCESS;
 }
 
 
@@ -403,22 +425,28 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
-	pr_info("flirdrv-fad GetKeypadSubjBackligt not implemented\n");
-	return 0;
+	int brightness;
+
+	UINT8 bl_value;
+	brightness = gpDev->pike_cdev->brightness;
+
+	bl_value = (UINT8)brightness;
+
+	if (brightness == 0)
+		pBacklight->subjectiveBacklight = KP_SUBJ_LOW;
+	else if (brightness <= gpDev->Keypad_bl_low + (gpDev->Keypad_bl_medium - gpDev->Keypad_bl_low)/2)
+		pBacklight->subjectiveBacklight = KP_SUBJ_LOW;
+	else if (brightness <= gpDev->Keypad_bl_medium + (gpDev->Keypad_bl_high - gpDev->Keypad_bl_medium)/2)
+		pBacklight->subjectiveBacklight = KP_SUBJ_MEDIUM;
+	else
+		pBacklight->subjectiveBacklight = KP_SUBJ_HIGH;
+
+
+	// RETAILMSG(1, (_T("GetKeypadSubjBacklight %x\r\n"),pBacklight->subjectiveBacklight));
+	return ERROR_SUCCESS;
 }
 
 
-DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight)
-{
-	pr_info("flirdrv-fad: GetKeypadBackligt not implemented\n");
-	return 0;
-}
-
-DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight)
-{
-	pr_info("flirdrv-fad: SetKeypadBacklight not implemented\n");
-	return 0;
-}
 
 void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
 {
