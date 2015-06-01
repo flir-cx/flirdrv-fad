@@ -103,11 +103,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
     }
     up_read(&leds_list_lock);
 
-    gpDev->pijk_cdev->brightness = 80;
-    gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
-    gpDev->pike_cdev->brightness = 80;
-    gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
-//
 
 /* Configure I2C from Devicetree */
 	retval = of_property_read_u32_index(gpDev->node, "hI2C1", 0, &tmp);
@@ -148,6 +143,12 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	BspGetSubjBackLightLevel(&gpDev->Keypad_bl_low,
 				 &gpDev->Keypad_bl_medium,
 				 &gpDev->Keypad_bl_high);
+
+	gpDev->pijk_cdev->brightness = gpDev->Keypad_bl_low;
+	gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
+	gpDev->pike_cdev->brightness = gpDev->Keypad_bl_low;
+	gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
+
 
 	if (gpDev->bHasLaser) {
 		int pin;
@@ -261,6 +262,10 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	if(gpDev->laser_soft_gpio){
 		gpio_free(gpDev->laser_switch_gpio);
 	}
+	gpDev->pijk_cdev->brightness = 0;
+	gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
+	gpDev->pike_cdev->brightness = 0;
+	gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
 
 	i2c_put_adapter(gpDev->hI2C1);
 	i2c_put_adapter(gpDev->hI2C2);
