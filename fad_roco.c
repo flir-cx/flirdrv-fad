@@ -398,6 +398,9 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 	case KP_SUBJ_HIGH:
 		brightness=gpDev->Keypad_bl_high;
 		break;
+	case KP_SUBJ_OFF:
+		brightness=0;
+		break;
 	default:
 		brightness=0;
 		break;
