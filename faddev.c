@@ -26,6 +26,7 @@
 #include <linux/version.h>
 #include "flir-kernel-version.h"
 #include <linux/leds.h>
+#include <linux/suspend.h>
 
 #define EUNKNOWNCPU 3
 
@@ -97,6 +98,64 @@ static void cpu_deinitialize(void)
 	} else{
 		pr_info("Unknown System CPU\n");
 	}
+}
+
+/**
+ * Device attribute "fadsuspend" to sync with application during suspend/resume
+ *
+ */
+
+static ssize_t show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	if (gpDev->bSuspend)
+		strcpy(buf, "suspend\n");
+	else
+		strcpy(buf, "run\n");
+	return strlen(buf);
+}
+
+static ssize_t store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+{
+	if (gpDev->bSuspend) {
+		if ((len == 1) && (*buf == '1'))
+			gpDev->bSuspend = 0;
+		else
+			pr_info("App standby prepare fail %d %c\n", len, (len>0) ? *buf : ' ');
+		complete(&gpDev->standbyComplete);
+	} else
+		pr_debug("App resume\n");
+
+	return sizeof(int);
+}
+
+static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
+
+/**
+ * Power notify callback for application sync during suspend/resume
+ *
+ */
+
+static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
+{
+	switch (val) {
+	case PM_SUSPEND_PREPARE:
+		pr_debug("fad_notify: SUSPEND\n");
+		gpDev->bSuspend = 1;
+		sysfs_notify(&gpDev->dev->kobj, NULL, "fadsuspend");
+		wait_for_completion_timeout(&gpDev->standbyComplete, msecs_to_jiffies(10000));
+		if (gpDev->bSuspend) {
+			pr_info("Application suspend failed\n");
+			return NOTIFY_BAD;
+		}
+		return NOTIFY_OK;
+
+	case PM_RESTORE_PREPARE:
+		pr_debug("fad_notify: RESTORE\n");
+		sysfs_notify(&gpDev->dev->kobj, NULL, "fadsuspend");
+		gpDev->bSuspend = 0;
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
 }
 
 /**
@@ -173,6 +232,11 @@ static int __init FAD_Init(void)
 		pr_err("flirdrv-fad: Failed to initialize CPU\n");
 		goto EXIT_OUT_INIT;
 	}
+
+	// Set up suspend handling
+	device_create_file(dev, &dev_attr_fadsuspend);
+	pm_notifier(fad_notify, 0);
+	init_completion(&gpDev->standbyComplete);
 
 	return retval;
 

@@ -44,6 +44,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	struct semaphore semIOport;
 	struct i2c_adapter *hI2C1;
 	struct i2c_adapter *hI2C2;
+	struct completion standbyComplete;
 	BOOL bLaserEnable;	// True when laser enable active
 	PVOID pWdog;		// Pointer to Watchdog CPU registers
 	UINT8 Keypad_bl_low;
@@ -80,6 +81,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasBuzzer;
 	BOOL bHasKpBacklight;
 	BOOL bHasSoftwareControlledLaser;
+	BOOL bSuspend;
 
 	 DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
 				   FADDEVIOCTLLED * pLED);
