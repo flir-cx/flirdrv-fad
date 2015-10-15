@@ -149,10 +149,10 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		}
 		return NOTIFY_OK;
 
-	case PM_RESTORE_PREPARE:
-		pr_debug("fad_notify: RESTORE\n");
-		sysfs_notify(&gpDev->dev->kobj, NULL, "fadsuspend");
+	case PM_POST_SUSPEND:
+		pr_debug("fad_notify: POST_SUSPEND\n");
 		gpDev->bSuspend = 0;
+		sysfs_notify(&gpDev->dev->kobj, NULL, "fadsuspend");
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
