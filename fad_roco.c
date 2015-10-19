@@ -29,6 +29,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/leds.h>
+#include <linux/platform_device.h>
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -206,7 +207,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		}
 	}
 
-	gpDev->reg_opt3v6 = regulator_get(gpDev->dev, "rori_opt_3v6");
+	gpDev->reg_opt3v6 = regulator_get(&gpDev->pLinuxDevice->dev, "rori_opt_3v6");
 	if(IS_ERR(gpDev->reg_opt3v6))
 	{
 		pr_err("Error on rori_opt_3v6 get\n");

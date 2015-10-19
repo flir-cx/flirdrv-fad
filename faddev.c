@@ -27,6 +27,7 @@
 #include "flir-kernel-version.h"
 #include <linux/leds.h>
 #include <linux/suspend.h>
+#include <linux/miscdevice.h>
 
 #define EUNKNOWNCPU 3
 
@@ -48,6 +49,12 @@ static struct file_operations fad_fops = {
 	.unlocked_ioctl = FAD_IOControl,
 	.read = FadRead,
 	.poll = FadPoll,
+};
+
+static struct miscdevice fad_miscdev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name  = "fad0",
+	.fops  = &fad_fops
 };
 
 // Code
@@ -141,7 +148,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 	case PM_SUSPEND_PREPARE:
 		pr_debug("fad_notify: SUSPEND\n");
 		gpDev->bSuspend = 1;
-		sysfs_notify(&gpDev->dev->kobj, NULL, "fadsuspend");
+		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
 		wait_for_completion_timeout(&gpDev->standbyComplete, msecs_to_jiffies(10000));
 		if (gpDev->bSuspend) {
 			pr_info("Application suspend failed\n");
@@ -152,11 +159,69 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 	case PM_POST_SUSPEND:
 		pr_debug("fad_notify: POST_SUSPEND\n");
 		gpDev->bSuspend = 0;
-		sysfs_notify(&gpDev->dev->kobj, NULL, "fadsuspend");
+		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
 }
+
+
+static int fad_probe(struct platform_device *pdev)
+{
+	int ret;
+
+	pr_info("Probing FAD driver\n");
+	ret = misc_register(&fad_miscdev);
+	if (ret) {
+		pr_err("Failed to register miscdev for FAD driver\n");
+		return ret;
+	}
+
+	// initialize this device instance
+	sema_init(&gpDev->semDevice, 1);
+	sema_init(&gpDev->semIOport, 1);
+
+	// init wait queue
+	init_waitqueue_head(&gpDev->wq);
+
+	// Set up CPU specific stuff
+	ret = cpu_initialize();
+	if (ret < 0){
+		pr_err("flirdrv-fad: Failed to initialize CPU\n");
+		return ret;
+	}
+
+	// Set up suspend handling
+	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
+	gpDev->nb.notifier_call = fad_notify;
+	gpDev->nb.priority = 0;
+	register_pm_notifier(&gpDev->nb);
+	init_completion(&gpDev->standbyComplete);
+
+	return ret;
+}
+
+static int fad_remove(struct platform_device *pdev)
+{
+	pr_info("Removing FAD driver\n");
+	unregister_pm_notifier(&gpDev->nb);
+	device_remove_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
+	misc_deregister(&fad_miscdev);
+	cpu_deinitialize();
+
+	return 0;
+}
+
+static struct platform_driver fad_driver = {
+	.probe      = fad_probe,
+	.remove     = fad_remove,
+//	.suspend    = fad_suspend,
+//	.resume     = fad_resume,
+	.driver     = {
+		.name   = "fad",
+		.owner  = THIS_MODULE,
+	},
+};
 
 /**
  * FAD_Init
@@ -168,7 +233,6 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 static int __init FAD_Init(void)
 {
 	int retval = 0;
-	struct device * dev;
 
 	pr_info("FAD_Init\n");
 
@@ -178,21 +242,6 @@ static int __init FAD_Init(void)
 	if (! gpDev) {
 		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
 		goto EXIT_OUT;
-	}
-
-	retval = alloc_chrdev_region(&gpDev->fad_dev, 0, 1, "fad");
-	if(retval) {
-		goto EXIT_OUT_ALLOC_CHRDEVICE;
-	}
-	cdev_init(&gpDev->fad_cdev, &fad_fops);
-	gpDev->fad_cdev.owner = THIS_MODULE;
-	gpDev->fad_cdev.ops = &fad_fops;
-
-	retval = cdev_add(&gpDev->fad_cdev, gpDev->fad_dev, 1);
-
-	if (retval) {
-		pr_err("flirdrv-fad: Error adding device driver\n");
-		goto EXIT_OUT_ADDEVICE;
 	}
 
 	gpDev->pLinuxDevice = platform_device_alloc("fad", 1);
@@ -207,50 +256,21 @@ static int __init FAD_Init(void)
 		goto EXIT_OUT_PLATFORMADD;
 	}
 
-	pr_debug("flirdrv-fad: FAD driver device id %d.%d added\n", MAJOR(gpDev->fad_dev),
-		 MINOR(gpDev->fad_dev));
-	gpDev->fad_class = class_create(THIS_MODULE, "fad");
-	
-	dev = device_create(gpDev->fad_class, NULL, gpDev->fad_dev, NULL, "fad0");
-	gpDev->dev = dev;
-
-	if(dev == NULL) {
-		pr_err("flirdrv-fad: Device creation failed\n");
-		goto EXIT_OUT_DEVICE;
-	}
-
-	// initialize this device instance
-	sema_init(&gpDev->semDevice, 1);
-	sema_init(&gpDev->semIOport, 1);
-
-	// init wait queue
-	init_waitqueue_head(&gpDev->wq);
-
-	retval = cpu_initialize();
-
-	if (retval < 0){
-		pr_err("flirdrv-fad: Failed to initialize CPU\n");
-		goto EXIT_OUT_INIT;
-	}
-
-	// Set up suspend handling
-	device_create_file(dev, &dev_attr_fadsuspend);
-	pm_notifier(fad_notify, 0);
-	init_completion(&gpDev->standbyComplete);
+	retval = platform_driver_register(&fad_driver);
+        if (retval < 0) {
+		goto EXIT_OUT_DRIVERADD;
+		pr_err("flirdrv-fad: Error adding platform driver\n");
+        }
 
 	return retval;
 
 
-EXIT_OUT_INIT:
-	cpu_deinitialize();
-EXIT_OUT_DEVICE:
-	device_destroy(gpDev->fad_class, gpDev->fad_dev);
-EXIT_OUT_PLATFORMADD:
+EXIT_OUT_DRIVERADD:
 	platform_device_unregister(gpDev->pLinuxDevice);
+EXIT_OUT_PLATFORMADD:
+	platform_device_put(gpDev->pLinuxDevice);
 EXIT_OUT_PLATFORMALLOC:
-EXIT_OUT_ADDEVICE:
-	cdev_del(&gpDev->fad_cdev);
-EXIT_OUT_ALLOC_CHRDEVICE:
+	kfree(gpDev);
 EXIT_OUT:
 	return retval;
 
@@ -259,17 +279,14 @@ EXIT_OUT:
 /** 
  * FAD_Deinit
  * Cleanup after FAD Init on module unload
- * 
- * @return 
+ *
+ * @return
  */
-static void __devexit FAD_Deinit(void)
+static void __exit FAD_Deinit(void)
 {
 	pr_info("FAD_Deinit\n");
 
-	cpu_deinitialize();
-	unregister_chrdev_region(gpDev->fad_dev, 1);
-	device_destroy(gpDev->fad_class, gpDev->fad_dev);
-	class_destroy(gpDev->fad_class);
+	platform_driver_unregister(&fad_driver);
 	platform_device_unregister(gpDev->pLinuxDevice);
 	kfree(gpDev);
 	gpDev = NULL;
@@ -277,7 +294,7 @@ static void __devexit FAD_Deinit(void)
 
 
 
-/** 
+/**
  * DOIOControl
  * 
  * @param gpDev 
