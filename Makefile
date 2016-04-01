@@ -19,6 +19,7 @@ EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include
 	fad-objs += fad_irq.o
 	fad-objs += fad_neco.o
 	fad-objs += fad_roco.o
+	fad-objs += fad_platform.o
 	PWD := $(shell pwd)
 
 all: 

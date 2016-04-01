@@ -73,8 +73,12 @@ static int cpu_initialize(void)
 	if (cpu_is_imx6s()){
 		gpDev->bHasDigitalIO = TRUE;
 		gpDev->bHasKAKALed = TRUE;
-
+#ifdef CONFIG_OF
+		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
+		retval = SetupMX6Platform(gpDev);
+#else
 		retval = SetupMX6S(gpDev);
+#endif
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
 		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
@@ -96,7 +100,11 @@ static int cpu_initialize(void)
 static void cpu_deinitialize(void)
 {
 	if (cpu_is_imx6s()){
+#ifdef CONFIG_OF
+		InvSetupMX6Platform(gpDev);
+#else        
 		InvSetupMX6S(gpDev);
+#endif
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
 		of_node_put(gpDev->node);
