@@ -53,7 +53,7 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 #endif
 	if(gpDev->bHasLaser){
 		ret = request_irq(gpio_to_irq(pin), fadLaserIST,
-				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, 
+				  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 				  "LaserON", gpDev);
 	}
 	if(ret){
@@ -141,24 +141,23 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 irqreturn_t fadLaserIST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
-	static BOOL bWaitForNeg;
-	int pin;
-#ifdef CONFIG_OF
-	pin = gpDev->laser_on_gpio;
-#else
-	pin = LASER_ON
-#endif
-
+	/* static BOOL bWaitForNeg; */
+/* 	int pin; */
+/* #ifdef CONFIG_OF */
+/* 	pin = gpDev->laser_on_gpio; */
+/* #else */
+/* 	pin = LASER_ON */
+/* #endif */
 	ApplicationEvent(gpDev, FAD_LASER_EVENT);
-	if (bWaitForNeg) {
-		irq_set_irq_type(gpio_to_irq(pin),
-				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
-		bWaitForNeg = FALSE;
-	} else {
-		irq_set_irq_type(gpio_to_irq(LASER_ON),
-				 IRQF_TRIGGER_LOW | IRQF_ONESHOT);
-		bWaitForNeg = TRUE;
-	}
+	/* if (bWaitForNeg) { */
+	/* 	irq_set_irq_type(gpio_to_irq(pin), */
+	/* 			 IRQF_TRIGGER_LOW | IRQF_ONESHOT); */
+	/* 	bWaitForNeg = FALSE; */
+	/* } else { */
+	/* 	irq_set_irq_type(gpio_to_irq(LASER_ON), */
+	/* 			 IRQF_TRIGGER_HIGH | IRQF_ONESHOT); */
+	/* 	bWaitForNeg = TRUE; */
+	/* } */
 
 	return IRQ_HANDLED;
 }
