@@ -44,7 +44,7 @@ static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
-	int retval;
+	int retval = -1;
 //	u32 tmp;
 //	extern struct list_head leds_list;
 //	extern struct rw_semaphore leds_list_lock;
@@ -65,7 +65,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		} else {
-            pr_err("%s: laser_on_gpio %i\n", __func__, pin);
+            pr_debug("%s: laser_on_gpio %i\n", __func__, pin);
 			gpDev->laser_on_gpio = pin;
 			gpio_request(pin, "LaserON");
 			gpio_direction_input(pin);
@@ -117,10 +117,10 @@ void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 		value = (gpio_get_value_cansleep(gpDev->laser_on_gpio) == 0);
 
 	pLaserStatus->bLaserIsOn = value;
-    pr_err("%s: bLaserIson is %i\n", __func__, value);
+    pr_debug("%s: bLaserIson is %i\n", __func__, value);
 	if(gpDev->laser_switch_gpio)
 		value = gpio_get_value_cansleep(gpDev->laser_switch_gpio == 0);
-    pr_err("%s: laser_power_enabled is %i\n", __func__, value);
+    pr_debug("%s: laser_power_enabled is %i\n", __func__, value);
 
 	pLaserStatus->bLaserPowerEnabled = value;
 }
