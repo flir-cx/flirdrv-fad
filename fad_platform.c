@@ -49,7 +49,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 //	extern struct list_head leds_list;
 //	extern struct rw_semaphore leds_list_lock;
 //	struct led_classdev *led_cdev;
-
+	struct device *dev = &gpDev->pLinuxDevice->dev;
+	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 	gpDev->pSetLaserStatus = setLaserStatus;
 	gpDev->pGetLaserStatus = getLaserStatus;
 
@@ -77,6 +78,12 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 			}
 		}
 	}
+
+	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
+	if(IS_ERR(gpDev->reg_optics_power))
+		dev_err(dev,"can't get regulator optics_power");
+	else
+		retval = regulator_enable(gpDev->reg_optics_power);
 
 	return retval;
 
