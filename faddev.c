@@ -69,16 +69,15 @@ static struct miscdevice fad_miscdev = {
 static int cpu_initialize(void)
 {
 	int retval;
-
+#ifdef CONFIG_OF
+	if(of_machine_is_compatible("fsl,imx6dl-evco"))
+		retval = SetupMX6Platform(gpDev);
+	else
+#endif
 	if (cpu_is_imx6s()){
 		gpDev->bHasDigitalIO = TRUE;
 		gpDev->bHasKAKALed = TRUE;
-#ifdef CONFIG_OF
-		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
-		retval = SetupMX6Platform(gpDev);
-#else
 		retval = SetupMX6S(gpDev);
-#endif
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
 		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
@@ -99,12 +98,13 @@ static int cpu_initialize(void)
  */
 static void cpu_deinitialize(void)
 {
-	if (cpu_is_imx6s()){
 #ifdef CONFIG_OF
+	if(of_machine_is_compatible("fsl,imx6dl-evco"))
 		InvSetupMX6Platform(gpDev);
-#else        
-		InvSetupMX6S(gpDev);
+	else
 #endif
+	if (cpu_is_imx6s()){
+		InvSetupMX6S(gpDev);
 	} else if (cpu_is_imx6q()){
 #ifdef CONFIG_OF
 		of_node_put(gpDev->node);
