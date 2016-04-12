@@ -1,5 +1,4 @@
 /***********************************************************************
-*                                                                     
 * Project: Balthazar
 * $Date$
 * $Author$
@@ -11,7 +10,6 @@
 *
 * Last check-in changelist:
 * $Change$
-* 
 *
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
@@ -28,6 +26,8 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/leds.h>
 #include <linux/platform_device.h>
+#include <linux/ca111.h>
+#include <linux/input.h>
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -41,6 +41,7 @@ static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 			   PFADDEVIOCTLLASER pLaserStatus);
 
 // Code
+void startmeasure(void);
 
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
@@ -53,20 +54,22 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 	gpDev->pSetLaserStatus = setLaserStatus;
 	gpDev->pGetLaserStatus = getLaserStatus;
-
+	startmeasure();
 	/* Configure devices (bools) from DT */
 	//Do not care about return value of function
 	//If property is missing, assume device doesnt exist!
 	//Better to wrap this in separate function... (int -> bool etc...)
-	of_property_read_u32_index(gpDev->node, "hasLaser", 0, &gpDev->bHasLaser);
+	of_property_read_u32_index(gpDev->node,
+				   "hasLaser", 0, &gpDev->bHasLaser);
 
 	if (gpDev->bHasLaser) {
 		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0, NULL);
+		pin = of_get_named_gpio_flags(gpDev->node,
+					      "laser_on-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		} else {
-            pr_debug("%s: laser_on_gpio %i\n", __func__, pin);
+			pr_debug("%s: laser_on_gpio %i\n", __func__, pin);
 			gpDev->laser_on_gpio = pin;
 			gpio_request(pin, "LaserON");
 			gpio_direction_input(pin);
@@ -94,10 +97,10 @@ EXIT_NO_LASERIRQ:
 	return retval;
 }
 
-/** 
+/**
  * Inverse setup done in SetupMX6Q...
- * 
- * @param gpDev 
+ *
+ * @param gpDev
  */
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
@@ -112,9 +115,9 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-/* //	SetI2CIoport(pInfo, LASER_SWITCH_ON, LaserStatus); */
-/* 	if(gpDev->laser_switch_gpio) */
-/* 		gpio_set_value_cansleep(gpDev->laser_switch_gpio, on); */
+/*	SetI2CIoport(pInfo, LASER_SWITCH_ON, LaserStatus); */
+/*	if(gpDev->laser_switch_gpio) */
+/*		gpio_set_value_cansleep(gpDev->laser_switch_gpio, on); */
 }
 
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
@@ -124,11 +127,26 @@ void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 		value = (gpio_get_value_cansleep(gpDev->laser_on_gpio) == 0);
 
 	pLaserStatus->bLaserIsOn = value;
-    pr_debug("%s: bLaserIson is %i\n", __func__, value);
-	if(gpDev->laser_switch_gpio)
+	pr_debug("%s: bLaserIson is %i\n", __func__, value);
+	if(gpDev->laser_switch_gpio){
 		value = gpio_get_value_cansleep(gpDev->laser_switch_gpio == 0);
-    pr_debug("%s: laser_power_enabled is %i\n", __func__, value);
-
+	}
+	pr_debug("%s: laser_power_enabled is %i\n", __func__, value);
 	pLaserStatus->bLaserPowerEnabled = value;
 }
 
+
+void stopmeasure(void)
+{
+	struct input_dev *button_dev = ca111_get_input_dev();
+	pr_err("%s: input dev name is\n", __func__);
+	input_event(button_dev, EV_MSC, MSC_RAW, 0);
+	return 0;
+}
+void startmeasure(void)
+{
+	struct input_dev *button_dev = ca111_get_input_dev();
+	pr_err("%s: input dev name is\n", __func__);
+	input_event(button_dev, EV_MSC, MSC_RAW, 1);
+	return 0;
+}
