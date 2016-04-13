@@ -69,6 +69,10 @@ typedef struct __FAD_HW_INDEP_INFO {
 
 	struct led_classdev *pijk_cdev;
 	struct led_classdev *pike_cdev;
+
+    int laserMode;
+    int ldmAccuracy;
+    int ldmContinous;
 #endif
 	BOOL bHasLaser;
 	BOOL bHasGPS;
@@ -81,32 +85,32 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasSoftwareControlledLaser;
 	BOOL bSuspend;
 
-	 DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
-				   FADDEVIOCTLLED * pLED);
-	 DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
-				   FADDEVIOCTLLED * pLED);
+    DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
+                              FADDEVIOCTLLED * pLED);
+    DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
+                              FADDEVIOCTLLED * pLED);
 	void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
 	void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
-				 BOOL on);
+                             BOOL on);
 	void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
-				 PFADDEVIOCTLLASER pLaserStatus);
+                             PFADDEVIOCTLLASER pLaserStatus);
 	void (*pUpdateLaserOutput) (struct __FAD_HW_INDEP_INFO * gpDev);
 	void (*pSetBuzzerFrequency) (USHORT usFreq, UCHAR ucPWM);
 	void (*pSetLaserActive) (struct __FAD_HW_INDEP_INFO * gpDev,
-				 BOOL bEnable);
-	 BOOL(*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * gpDev);
-	 DWORD(*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
-	 DWORD(*pSetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
-	 DWORD(*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * gpDev,
-					  PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-	 DWORD(*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * gpDev,
-					  PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
-	 BOOL(*pSetGPSEnable) (BOOL enabled);
-	 BOOL(*pGetGPSEnable) (BOOL * enabled);
+                             BOOL bEnable);
+	BOOL(*pGetLaserActive) (struct __FAD_HW_INDEP_INFO * gpDev);
+    void (*pSetLaserMode) (struct __FAD_HW_INDEP_INFO * gpDev, PFADDEVIOCTLLASERMODE pLaserMode);
+	DWORD(*pGetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
+	DWORD(*pSetKeypadBacklight) (PFADDEVIOCTLBACKLIGHT pBacklight);
+	DWORD(*pGetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * gpDev,
+                                     PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+    DWORD(*pSetKeypadSubjBacklight) (struct __FAD_HW_INDEP_INFO * gpDev,
+                                     PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
+    BOOL(*pSetGPSEnable) (BOOL enabled);
+    BOOL(*pGetGPSEnable) (BOOL * enabled);
 	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * gpDev, UINT32 Timeout);
 	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * gpDev);
 	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * gpDev);
-
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
 // Driver serialization macros

@@ -321,12 +321,12 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
+        pr_err("IOCTL_FAD_SET_LASER_STATUS\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->bLaserEnable =
-			    ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
+			gpDev->bLaserEnable = ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
 			gpDev->pSetLaserStatus(gpDev, gpDev->bLaserEnable);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
@@ -334,6 +334,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_GET_LASER_STATUS:
+        pr_err("IOCTL_FAD_GET_LASER_STATUS:\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
@@ -343,6 +344,11 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			UNLOCK(gpDev);
 		}
 		break;
+
+	case IOCTL_FAD_SET_LASER_MODE:
+        gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE) pBuf);
+        retval = ERROR_SUCCESS;
+        break;
 
 	case IOCTL_SET_APP_EVENT:
 		retval = ERROR_SUCCESS;
@@ -436,6 +442,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_SET_LASER_ACTIVE:
+        pr_err("IOCTL_FAD_SET_LASER_ACTIVE\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
@@ -449,6 +456,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_GET_LASER_ACTIVE:
+        pr_err("IOCTL_FAD_GET_LASER_ACTIVE\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
