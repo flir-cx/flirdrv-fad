@@ -254,7 +254,7 @@ void startmeasure_lq_continous(void)
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
 {
         gpDev->laserMode = pLaserMode->mode;
-        gpDev->ldmAccuracy = pLaserMode->quality;
+        gpDev->ldmAccuracy = pLaserMode->accuracy;
         gpDev->ldmContinous = pLaserMode->continousMeasurment;
 }
 
