@@ -321,7 +321,6 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
-        pr_err("IOCTL_FAD_SET_LASER_STATUS\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
@@ -334,7 +333,6 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_GET_LASER_STATUS:
-        pr_err("IOCTL_FAD_GET_LASER_STATUS:\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
@@ -442,7 +440,6 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_SET_LASER_ACTIVE:
-        pr_err("IOCTL_FAD_SET_LASER_ACTIVE\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
@@ -456,7 +453,6 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_GET_LASER_ACTIVE:
-        pr_err("IOCTL_FAD_GET_LASER_ACTIVE\n");
 		if (!gpDev->bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {

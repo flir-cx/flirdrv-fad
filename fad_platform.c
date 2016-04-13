@@ -179,6 +179,7 @@ void startlaser(PFAD_HW_INDEP_INFO gpDev)
         switch (gpDev->laserMode){
         case LASERMODE_POINTER: 
                 startmeasure(MSC_RAW, 1);
+                break;
         case LASERMODE_DISTANCE:
                 switch (gpDev->ldmAccuracy){
                 case LASERMODE_DISTANCE_LOW_ACCURACY:
@@ -197,9 +198,10 @@ void startlaser(PFAD_HW_INDEP_INFO gpDev)
                         break;
                         
                 default:
-                        pr_err("%s: Unknown ldm accuracy mode...\n", __func__);
+                        pr_err("%s: Unknown ldm accuracy mode (%i)...\n", __func__, gpDev->ldmAccuracy);
                         break;
                 }
+                break;
         default: 
                 pr_err("%s: Unknown lasermode...\n", __func__);
                 break;
