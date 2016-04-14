@@ -26,9 +26,9 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/leds.h>
 #include <linux/platform_device.h>
+#include <linux/input.h>
 #if defined (CONFIG_CA111)
 #include <linux/ca111.h>
-#include <linux/input.h>
 #endif
 
 // Definitions
