@@ -344,8 +344,12 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_SET_LASER_MODE:
-        gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE) pBuf);
-        retval = ERROR_SUCCESS;
+        if(gpDev->pSetLaserMode){
+            gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE) pBuf);
+            retval = ERROR_SUCCESS;
+        } else {
+            retval = ERROR_NO_SUCCESS;
+        }
         break;
 
 	case IOCTL_SET_APP_EVENT:
