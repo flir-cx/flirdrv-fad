@@ -348,7 +348,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
             gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE) pBuf);
             retval = ERROR_SUCCESS;
         } else {
-            retval = ERROR_NO_SUCCESS;
+            retval = ERROR_NOT_SUPPORTED;
         }
         break;
 
