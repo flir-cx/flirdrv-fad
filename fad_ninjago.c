@@ -26,8 +26,10 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/leds.h>
 #include <linux/platform_device.h>
+#if defined (CONFIG_CA111)
 #include <linux/ca111.h>
 #include <linux/input.h>
+#endif
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -225,7 +227,7 @@ void startmeasure(int key, int value)
 	struct input_dev *button_dev = ca111_get_input_dev();
 	input_event(button_dev, EV_MSC, key, value);
 #else
-    pr_err("%s: Not implemented\n", __func__);
+    pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
 #endif
 }
 
