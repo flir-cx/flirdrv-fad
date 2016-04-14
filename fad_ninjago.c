@@ -221,8 +221,12 @@ void stopmeasure(void)
 
 void startmeasure(int key, int value)
 {
+#if defined (CONFIG_CA111)
 	struct input_dev *button_dev = ca111_get_input_dev();
 	input_event(button_dev, EV_MSC, key, value);
+#else
+    pr_err("%s: Not implemented\n", __func__);
+#endif
 }
 
 void startmeasure_hq_single(void)
