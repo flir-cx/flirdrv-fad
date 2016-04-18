@@ -12,7 +12,8 @@ ifneq ($(KERNEL_PATH),)
        KERNEL_SRC = $(KERNEL_PATH)
 endif
 
-EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include
+KCFLAGS_DEFINITIONS := $(shell cat $(KERNEL_SRC)/../kernel-build-artifacts/.config |grep -v \^\# |grep CA111 )E
+XTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include
 	obj-m := fad.o
 	fad-objs += faddev.o
 	fad-objs += fad_irq.o
@@ -22,7 +23,9 @@ EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include
 	PWD := $(shell pwd)
 
 all: 
-	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
+	KCFLAGS=-D$(KCFLAGS_DEFINITIONS) $(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
+#	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules
+
 
 modules_install:
 	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
