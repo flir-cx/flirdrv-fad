@@ -27,9 +27,8 @@
 #include <linux/leds.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
-#if defined (CONFIG_CA111)
-#include <linux/ca111.h>
-#endif
+
+extern struct input_dev* ca111_get_input_dev(void);
 
 // Definitions
 #define ENOLASERIRQ 1
