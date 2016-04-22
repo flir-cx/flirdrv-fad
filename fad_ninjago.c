@@ -224,7 +224,11 @@ void startmeasure(int key, int value)
 {
 #if defined (CONFIG_CA111)
 	struct input_dev *button_dev = ca111_get_input_dev();
-	input_event(button_dev, EV_MSC, key, value);
+	if(button_dev){
+		input_event(button_dev, EV_MSC, key, value);
+	} else {
+		pr_err("fad %s: ca111 input_dev is NULL\n", __func__);
+	}
 #else
     pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
 #endif
