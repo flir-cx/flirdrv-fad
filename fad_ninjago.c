@@ -98,6 +98,19 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = regulator_enable(gpDev->reg_optics_power);
 
+	gpDev->reg_position_sensor = devm_regulator_get(dev, "position_sensor");
+	if(IS_ERR(gpDev->reg_position_sensor))
+		dev_err(dev,"can't get regulator position_sensor");
+	else
+		retval = regulator_enable(gpDev->reg_position_sensor);
+
+	gpDev->reg_ring_sensor = devm_regulator_get(dev, "ring_sensor");
+	if(IS_ERR(gpDev->reg_ring_sensor))
+		dev_err(dev,"can't get regulator ring_sensor");
+	else
+		retval = regulator_enable(gpDev->reg_ring_sensor);
+
+
 	return retval;
 
 EXIT_NO_LASERIRQ:
