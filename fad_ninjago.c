@@ -52,6 +52,8 @@ void startmeasure_hq_continous(void);
 void startmeasure_hq_single(void);
 void startmeasure_lq_continous(void);
 void startmeasure_lq_single(void);
+static BOOL setGPSEnable(BOOL on);
+static BOOL getGPSEnable(BOOL *on);
 
 // Code
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
@@ -64,6 +66,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pSetLaserActive = SetLaserActive;
 	gpDev->pGetLaserActive = GetLaserActive;
 	gpDev->pSetLaserMode = setLaserMode;
+	gpDev->pSetGPSEnable = setGPSEnable;
+	gpDev->pGetGPSEnable = getGPSEnable;
 
 	/* Configure devices (bools) from DT */
 	//Do not care about return value of function
@@ -71,6 +75,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	//Better to wrap this in separate function... (int -> bool etc...)
 	of_property_read_u32_index(gpDev->node,
 				   "hasLaser", 0, &gpDev->bHasLaser);
+	of_property_read_u32_index(gpDev->node,
+				   "hasGPS", 0, &gpDev->bHasGPS);
 
 	if (gpDev->bHasLaser) {
 		int pin;
@@ -283,3 +289,16 @@ void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
 }
 
 
+BOOL setGPSEnable(BOOL on)
+{
+	return TRUE;
+}
+
+BOOL getGPSEnable(BOOL * on)
+{
+	// GPS does not seem to receive correct signals when switching 
+	// on and off, I2C problems? Temporary fallback solution is to 
+	// Keep GPS switched on all the time.
+	*on = TRUE;
+	return TRUE;
+}
