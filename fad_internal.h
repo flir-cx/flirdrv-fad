@@ -114,6 +114,8 @@ typedef struct __FAD_HW_INDEP_INFO {
 	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * gpDev, UINT32 Timeout);
 	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * gpDev);
 	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * gpDev);
+	int (*suspend) (struct __FAD_HW_INDEP_INFO * gpDev);
+	int (*resume) (struct __FAD_HW_INDEP_INFO * gpDev);
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
 
 // Driver serialization macros

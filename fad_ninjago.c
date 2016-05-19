@@ -55,6 +55,9 @@ void startmeasure_lq_single(void);
 static BOOL setGPSEnable(BOOL on);
 static BOOL getGPSEnable(BOOL *on);
 
+static int suspend(PFAD_HW_INDEP_INFO gpDev);
+static int resume(PFAD_HW_INDEP_INFO gpDev);
+
 // Code
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
@@ -68,6 +71,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pSetLaserMode = setLaserMode;
 	gpDev->pSetGPSEnable = setGPSEnable;
 	gpDev->pGetGPSEnable = getGPSEnable;
+	gpDev->suspend = suspend;
+	gpDev->resume = resume;
 
 	/* Configure devices (bools) from DT */
 	//Do not care about return value of function
@@ -301,4 +306,31 @@ BOOL getGPSEnable(BOOL * on)
 	// Keep GPS switched on all the time.
 	*on = TRUE;
 	return TRUE;
+}
+
+int suspend(PFAD_HW_INDEP_INFO gpDev)
+{
+	int res;
+
+	pr_info("EC101 suspend\n");
+
+	res = regulator_disable(gpDev->reg_ring_sensor);
+	res |= regulator_disable(gpDev->reg_position_sensor);
+	res |= regulator_disable(gpDev->reg_optics_power);
+
+	return res;
+}
+
+
+int resume(PFAD_HW_INDEP_INFO gpDev)
+{
+	int res;
+
+	pr_info("EC101 resume\n");
+
+	res = regulator_enable(gpDev->reg_optics_power);
+	res |= regulator_enable(gpDev->reg_position_sensor);
+	res |= regulator_enable(gpDev->reg_ring_sensor);
+
+	return res;
 }

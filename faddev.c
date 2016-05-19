@@ -220,11 +220,27 @@ static int fad_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int fad_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	if (gpDev->suspend)
+		gpDev->suspend(gpDev);
+
+	return 0;
+}
+
+static int fad_resume(struct platform_device *pdev)
+{
+	if (gpDev->resume)
+		gpDev->resume(gpDev);
+
+	return 0;
+}
+
 static struct platform_driver fad_driver = {
 	.probe      = fad_probe,
 	.remove     = fad_remove,
-//	.suspend    = fad_suspend,
-//	.resume     = fad_resume,
+	.suspend    = fad_suspend,
+	.resume     = fad_resume,
 	.driver     = {
 		.name   = "fad",
 		.owner  = THIS_MODULE,
