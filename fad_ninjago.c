@@ -20,10 +20,12 @@
 #include <linux/errno.h>
 #include <linux/leds.h>
 #include "flir-kernel-version.h"
+#ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/of_regulator.h>
+#endif
 #include <linux/leds.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
@@ -62,8 +64,10 @@ static int resume(PFAD_HW_INDEP_INFO gpDev);
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
 	int retval = -1;
+#ifdef CONFIG_OF
 	struct device *dev = &gpDev->pLinuxDevice->dev;
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
+#endif
 	gpDev->pSetLaserStatus = setLaserStatus;
 	gpDev->pGetLaserStatus = getLaserStatus;
 	gpDev->pSetLaserActive = SetLaserActive;
@@ -74,6 +78,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->suspend = suspend;
 	gpDev->resume = resume;
 
+#ifdef CONFIG_OF
 	/* Configure devices (bools) from DT */
 	//Do not care about return value of function
 	//If property is missing, assume device doesnt exist!
@@ -121,13 +126,13 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = regulator_enable(gpDev->reg_ring_sensor);
 
-
 	return retval;
 
 EXIT_NO_LASERIRQ:
 	if(gpDev->bHasLaser){
 		FreeLaserIrq(gpDev);
 	}
+#endif
 	return retval;
 }
 
@@ -142,9 +147,11 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->bHasLaser) {
 		FreeLaserIrq(gpDev);
 	}
+#ifdef CONFIG_OF
 	if(gpDev->laser_on_gpio){
 		gpio_free(gpDev->laser_on_gpio);
 	}
+#endif
 }
 
 
@@ -201,6 +208,7 @@ BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 
 void startlaser(PFAD_HW_INDEP_INFO gpDev)
 {
+#ifdef CONFIG_OF
         switch (gpDev->laserMode){
         case LASERMODE_POINTER: 
                 startmeasure(MSC_RAW, 1);
@@ -231,6 +239,7 @@ void startlaser(PFAD_HW_INDEP_INFO gpDev)
                 pr_err("%s: Unknown lasermode...\n", __func__);
                 break;
         }
+#endif
 }
 
 
@@ -288,9 +297,11 @@ void startmeasure_lq_continous(void)
  */
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
 {
+#ifdef CONFIG_OF
         gpDev->laserMode = pLaserMode->mode;
         gpDev->ldmAccuracy = pLaserMode->accuracy;
         gpDev->ldmContinous = pLaserMode->continousMeasurment;
+#endif
 }
 
 
@@ -310,27 +321,27 @@ BOOL getGPSEnable(BOOL * on)
 
 int suspend(PFAD_HW_INDEP_INFO gpDev)
 {
-	int res;
+	int res = 0;
 
 	pr_info("EC101 suspend\n");
-
+#ifdef CONFIG_OF
 	res = regulator_disable(gpDev->reg_ring_sensor);
 	res |= regulator_disable(gpDev->reg_position_sensor);
 	res |= regulator_disable(gpDev->reg_optics_power);
-
+#endif
 	return res;
 }
 
 
 int resume(PFAD_HW_INDEP_INFO gpDev)
 {
-	int res;
+	int res = 0;
 
 	pr_info("EC101 resume\n");
-
+#ifdef CONFIG_OF
 	res = regulator_enable(gpDev->reg_optics_power);
 	res |= regulator_enable(gpDev->reg_position_sensor);
 	res |= regulator_enable(gpDev->reg_ring_sensor);
-
+#endif
 	return res;
 }

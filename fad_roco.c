@@ -24,10 +24,12 @@
 #include <linux/errno.h>
 #include <linux/leds.h>
 #include "flir-kernel-version.h"
+#ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/of_regulator.h>
+#endif
 #include <linux/leds.h>
 #include <linux/platform_device.h>
 
@@ -57,20 +59,23 @@ static BOOL setGPSEnable(BOOL on);
 static BOOL getGPSEnable(BOOL *on);
 static void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout);
 static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
+#ifdef CONFIG_OF
 static void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium,
 				     UINT8 * pHigh);
+#endif
 static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
 
 // Code
 
 int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
-	int retval;
+	int retval = 0;
+#ifdef CONFIG_OF
 	u32 tmp;
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
-
+#endif
 
 	gpDev->pGetKAKALedState = getKAKALedState;
 	gpDev->pSetKAKALedState = setKAKALedState;
@@ -91,7 +96,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pWdogService = WdogService;
 	gpDev->pCleanupHW = CleanupHW;
 
-
+#ifdef CONFIG_OF
 //	pr_err("Searching for LEDs\n");
     down_read(&leds_list_lock);
     list_for_each_entry(led_cdev, &leds_list, node) {
@@ -103,7 +108,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	    }
     }
     up_read(&leds_list_lock);
-
 
 /* Configure I2C from Devicetree */
 	retval = of_property_read_u32_index(gpDev->node, "hI2C1", 0, &tmp);
@@ -232,6 +236,7 @@ EXIT_I2C2:
 	i2c_put_adapter(gpDev->hI2C1);
 EXIT_I2C1:
 EXIT:
+#endif
 	return retval;
 }
 
@@ -242,6 +247,7 @@ EXIT:
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
+#ifdef CONFIG_OF
 	if(IS_ERR(gpDev->reg_opt3v6))
 	{
 		pr_err("Error on rori_opt_5v0 get\n");
@@ -249,11 +255,12 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 		regulator_disable(gpDev->reg_opt3v6);
 		regulator_put(gpDev->reg_opt3v6);
 	};
-
+#endif
 
 	if (gpDev->bHasLaser) {
 		FreeLaserIrq(gpDev);
 	}
+#ifdef CONFIG_OF
 	if(gpDev->laser_on_gpio){
 		gpio_free(gpDev->laser_on_gpio);
 	}
@@ -267,6 +274,7 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
 	gpDev->pike_cdev->brightness = 0;
 	gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
+#endif
 
 	i2c_put_adapter(gpDev->hI2C1);
 	i2c_put_adapter(gpDev->hI2C2);
@@ -295,8 +303,10 @@ void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 //	SetI2CIoport(pInfo, LASER_SWITCH_ON, LaserStatus);
+#ifdef CONFIG_OF
 	if(gpDev->laser_switch_gpio)
 		gpio_set_value_cansleep(gpDev->laser_switch_gpio, on);
+#endif
 }
 
 // Laser button has been pressed/released.
@@ -319,14 +329,16 @@ void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev)
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
 	int value=0;
+#ifdef CONFIG_OF
 	if(gpDev->laser_on_gpio)
 		value = (gpio_get_value_cansleep(gpDev->laser_on_gpio) == 0);
-
+#endif
 	pLaserStatus->bLaserIsOn = value;
 
+#ifdef CONFIG_OF
 	if(gpDev->laser_switch_gpio)
 		value = gpio_get_value_cansleep(gpDev->laser_switch_gpio == 0);
-
+#endif
 	pLaserStatus->bLaserPowerEnabled = value;
 }
 
@@ -357,9 +369,11 @@ BOOL WdogService(PFAD_HW_INDEP_INFO gpDev)
 
 void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
+#ifdef CONFIG_OF
 	if(gpDev->laser_soft_gpio){
 		gpio_set_value_cansleep(gpDev->laser_soft_gpio, on);
 	}
+#endif
 }
 
 /** 
@@ -373,9 +387,11 @@ void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
 	int value = 0;
+#ifdef CONFIG_OF
 	if(gpDev->laser_soft_gpio){
 		value = gpio_get_value_cansleep(gpDev->laser_soft_gpio);
 	}
+#endif
 	return value;
 }
 
@@ -407,11 +423,13 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 		break;
 	}
 
+#ifdef CONFIG_OF
 	gpDev->pijk_cdev->brightness = brightness;
 	gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
 
 	gpDev->pike_cdev->brightness = brightness;
 	gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
+#endif
 
 	return ERROR_SUCCESS;
 }
@@ -434,6 +452,7 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
 {
+#ifdef CONFIG_OF
 	int brightness;
 
 	UINT8 bl_value;
@@ -449,17 +468,18 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 		pBacklight->subjectiveBacklight = KP_SUBJ_MEDIUM;
 	else
 		pBacklight->subjectiveBacklight = KP_SUBJ_HIGH;
-
+#endif
 
 	// RETAILMSG(1, (_T("GetKeypadSubjBacklight %x\r\n"),pBacklight->subjectiveBacklight));
 	return ERROR_SUCCESS;
 }
 
 
-
+#ifdef CONFIG_OF
 void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
 {
 	*pLow = 10;
 	*pMedium = 40;
 	*pHigh = 75;
 }
+#endif

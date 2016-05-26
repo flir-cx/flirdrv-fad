@@ -60,11 +60,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int laser_soft_gpio;
 	int laser_switch_gpio;
 
-	struct regulator *reg_vcm1i2c;
-	struct regulator *reg_vcm2i2c;
-
 	struct regulator *reg_opt3v6;
-	struct regulator *reg_vcm;
 	struct regulator *reg_optics_power;
 	struct regulator *reg_position_sensor;
 	struct regulator *reg_ring_sensor;

@@ -83,7 +83,7 @@ static int cpu_initialize(void)
 		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 		retval = SetupMX6Q(gpDev);
 #else
-		pr_error("flirdrv-fad: Missing devicetree configuration\n");
+		pr_err("flirdrv-fad: Missing devicetree configuration\n");
 #endif
 	} else{
 		pr_info("Unknown System CPU\n");
