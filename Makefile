@@ -12,7 +12,8 @@ ifneq ($(KERNEL_PATH),)
        KERNEL_SRC = $(KERNEL_PATH)
 endif
 
-EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include
+EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include -Werror
+
 	obj-m := fad.o
 	fad-objs += faddev.o
 	fad-objs += fad_irq.o
