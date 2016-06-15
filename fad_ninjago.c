@@ -126,6 +126,12 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = regulator_enable(gpDev->reg_ring_sensor);
 
+	gpDev->reg_motor_sleep = devm_regulator_get(dev, "motor_sleep");
+	if(IS_ERR(gpDev->reg_motor_sleep))
+		dev_err(dev,"can't get regulator motor_sleep");
+	else
+		retval = regulator_enable(gpDev->reg_motor_sleep);
+
 	return retval;
 
 EXIT_NO_LASERIRQ:

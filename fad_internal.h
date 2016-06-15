@@ -64,7 +64,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	struct regulator *reg_optics_power;
 	struct regulator *reg_position_sensor;
 	struct regulator *reg_ring_sensor;
-
+	struct regulator *reg_motor_sleep;
 
 	struct led_classdev *pijk_cdev;
 	struct led_classdev *pike_cdev;
