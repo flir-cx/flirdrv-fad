@@ -331,7 +331,8 @@ int suspend(PFAD_HW_INDEP_INFO gpDev)
 
 	pr_info("EC101 suspend\n");
 #ifdef CONFIG_OF
-	res = regulator_disable(gpDev->reg_ring_sensor);
+	res = regulator_disable(gpDev->reg_motor_sleep);
+	res |= regulator_disable(gpDev->reg_ring_sensor);
 	res |= regulator_disable(gpDev->reg_position_sensor);
 	res |= regulator_disable(gpDev->reg_optics_power);
 #endif
@@ -348,6 +349,7 @@ int resume(PFAD_HW_INDEP_INFO gpDev)
 	res = regulator_enable(gpDev->reg_optics_power);
 	res |= regulator_enable(gpDev->reg_position_sensor);
 	res |= regulator_enable(gpDev->reg_ring_sensor);
+	res |= regulator_enable(gpDev->reg_motor_sleep);
 #endif
 	return res;
 }
