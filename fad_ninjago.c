@@ -31,6 +31,7 @@
 #include <linux/input.h>
 
 extern struct input_dev* ca111_get_input_dev(void);
+extern int ca111_get_laserstatus(void);
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -184,9 +185,9 @@ void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
-    pr_err("%s: Returning falses...\n", __func__);
-	pLaserStatus->bLaserIsOn = false;  //if laser is on
-	pLaserStatus->bLaserPowerEnabled = false; // if switch is pressed...
+  int state = ca111_get_laserstatus();
+  pLaserStatus->bLaserIsOn = (state && 0x0a);  //if laser is on
+  pLaserStatus->bLaserPowerEnabled = (state && 0x0a); // if switch is pressed...
 }
 
 void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
