@@ -318,14 +318,13 @@ void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
 
 BOOL setGPSEnable(BOOL on)
 {
+	//setting GPS enabled /disabled is handled through linux device PM system
+	// opening/closing the tty device is enough for userspace...
 	return TRUE;
 }
 
 BOOL getGPSEnable(BOOL * on)
 {
-	// GPS does not seem to receive correct signals when switching 
-	// on and off, I2C problems? Temporary fallback solution is to 
-	// Keep GPS switched on all the time.
 	*on = TRUE;
 	return TRUE;
 }
