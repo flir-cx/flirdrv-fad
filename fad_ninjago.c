@@ -186,11 +186,11 @@ void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
 #if defined (CONFIG_CA111)
-	  int state = ca111_get_laserstatus();
-	  pLaserStatus->bLaserIsOn = (state && 0x0a);  //if laser is on
-	  pLaserStatus->bLaserPowerEnabled = (state && 0x0a); // if switch is pressed...
+	int state = ca111_get_laserstatus();
+	pLaserStatus->bLaserIsOn = state;  //if laser is on
+	pLaserStatus->bLaserPowerEnabled = true; // if switch is pressed...
 #else
-    pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
+	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
 #endif
 }
 
