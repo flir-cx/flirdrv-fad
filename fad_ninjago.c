@@ -92,7 +92,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->bHasLaser) {
 		int pin;
 		pin = of_get_named_gpio_flags(gpDev->node,
-                                      "laser_on-gpios", 0, NULL);
+					      "laser_on-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0){
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		} else {
@@ -186,7 +186,9 @@ void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
 #if defined (CONFIG_CA111)
-	int state = ca111_get_laserstatus();
+	int state;
+	msleep(100);
+	state = ca111_get_laserstatus();
 	pLaserStatus->bLaserIsOn = state;  //if laser is on
 	pLaserStatus->bLaserPowerEnabled = true; // if switch is pressed...
 #else
