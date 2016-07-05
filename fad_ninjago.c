@@ -133,6 +133,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = regulator_enable(gpDev->reg_motor_sleep);
 
+	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
+
 	return retval;
 
 EXIT_NO_LASERIRQ:
@@ -335,7 +337,6 @@ int suspend(PFAD_HW_INDEP_INFO gpDev)
 {
 	int res = 0;
 
-	pr_info("EC101 suspend\n");
 #ifdef CONFIG_OF
 	res = regulator_disable(gpDev->reg_motor_sleep);
 	res |= regulator_disable(gpDev->reg_ring_sensor);
@@ -350,7 +351,6 @@ int resume(PFAD_HW_INDEP_INFO gpDev)
 {
 	int res = 0;
 
-	pr_info("EC101 resume\n");
 #ifdef CONFIG_OF
 	res = regulator_enable(gpDev->reg_optics_power);
 	res |= regulator_enable(gpDev->reg_position_sensor);

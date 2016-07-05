@@ -28,6 +28,8 @@
 #include <linux/leds.h>
 #include <linux/suspend.h>
 #include <linux/miscdevice.h>
+#include <linux/alarmtimer.h>
+#include <linux/reboot.h>
 
 #define EUNKNOWNCPU 3
 
@@ -150,13 +152,34 @@ static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
  *
  */
 
+enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
+{
+	pr_info("Standby timeout\n");
+
+	orderly_poweroff(1);
+
+	// Not supposed to be here
+	return ALARMTIMER_NORESTART;
+}
+
 static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 {
+	ktime_t kt;
+
 	switch (val) {
 	case PM_SUSPEND_PREPARE:
-		pr_debug("fad_notify: SUSPEND\n");
+		pr_debug("fad_notify: SUSPEND %d\n", gpDev->standbyMinutes);
+
+		// Make appcore enter standby
 		gpDev->bSuspend = 1;
 		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
+
+		// Set a timer to wake us up in 6 hours
+		alarm_init(gpDev->alarm, ALARM_REALTIME, &fad_standby_timeout);
+		kt = ktime_set(60 * gpDev->standbyMinutes, 0);
+		alarm_start_relative(gpDev->alarm, kt);
+
+		// Wait for appcore
 		wait_for_completion_timeout(&gpDev->standbyComplete, msecs_to_jiffies(10000));
 		if (gpDev->bSuspend) {
 			pr_info("Application suspend failed\n");
@@ -167,6 +190,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 	case PM_POST_SUSPEND:
 		pr_debug("fad_notify: POST_SUSPEND\n");
 		gpDev->bSuspend = 0;
+		alarm_cancel(gpDev->alarm);
 		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
 		return NOTIFY_OK;
 	}
@@ -262,7 +286,6 @@ static int __init FAD_Init(void)
 
 	// Allocate (and zero-initiate) our control structure.
 	gpDev = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
-
 	if (! gpDev) {
 		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
 		goto EXIT_OUT;
@@ -285,6 +308,8 @@ static int __init FAD_Init(void)
 		goto EXIT_OUT_DRIVERADD;
 		pr_err("flirdrv-fad: Error adding platform driver\n");
         }
+
+        gpDev->alarm = (struct alarm *) kzalloc(sizeof(struct alarm), GFP_KERNEL);
 
 	return retval;
 

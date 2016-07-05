@@ -27,6 +27,8 @@ enum {
 
 extern DWORD g_RestartReason;
 
+struct alarm;
+
 // Generic GPIO definitions
 #define LASER_ON			((7-1)*32 + 7)
 #define PIN_3V6A_EN			((3-1)*32 + 30)
@@ -49,6 +51,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	UINT8 Keypad_bl_high;
 	struct led_classdev *red_led_cdev;
 	struct led_classdev *blue_led_cdev;
+	struct alarm *alarm;
 
 	// Wait for IRQ variables
 	FAD_EVENT_E eEvent;
@@ -69,9 +72,10 @@ typedef struct __FAD_HW_INDEP_INFO {
 	struct led_classdev *pijk_cdev;
 	struct led_classdev *pike_cdev;
 
-    int laserMode;
-    int ldmAccuracy;
-    int ldmContinous;
+	int laserMode;
+	int ldmAccuracy;
+	int ldmContinous;
+	int standbyMinutes;
 #endif
 	BOOL bHasLaser;
 	BOOL bHasGPS;
