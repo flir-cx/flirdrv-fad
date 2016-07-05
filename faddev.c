@@ -152,6 +152,7 @@ static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
  *
  */
 
+#ifdef CONFIG_OF
 enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
 {
 	pr_info("Standby timeout\n");
@@ -196,7 +197,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 	}
 	return NOTIFY_DONE;
 }
-
+#endif
 
 static int fad_probe(struct platform_device *pdev)
 {
@@ -225,9 +226,11 @@ static int fad_probe(struct platform_device *pdev)
 
 	// Set up suspend handling
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
+#ifdef CONFIG_OF
 	gpDev->nb.notifier_call = fad_notify;
 	gpDev->nb.priority = 0;
 	register_pm_notifier(&gpDev->nb);
+#endif
 	init_completion(&gpDev->standbyComplete);
 
 	return ret;
@@ -236,7 +239,9 @@ static int fad_probe(struct platform_device *pdev)
 static int fad_remove(struct platform_device *pdev)
 {
 	pr_info("Removing FAD driver\n");
+#ifdef CONFIG_OF
 	unregister_pm_notifier(&gpDev->nb);
+#endif
 	device_remove_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
 	misc_deregister(&fad_miscdev);
 	cpu_deinitialize();
