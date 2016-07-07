@@ -142,7 +142,7 @@ static ssize_t store(struct device *dev, struct device_attribute *attr, const ch
 	} else
 		pr_debug("App resume\n");
 
-	return sizeof(int);
+	return sizeof(char);
 }
 
 static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
