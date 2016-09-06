@@ -30,11 +30,17 @@
 #include <linux/miscdevice.h>
 #include <linux/alarmtimer.h>
 #include <linux/reboot.h>
+#include <../drivers/base/power/power.h>
 
 #define EUNKNOWNCPU 3
 
 
+
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
+
+static 	int	power_state = ON_STATE;
+module_param(power_state, int, 0);
+MODULE_PARM_DESC(power_state, "Camera charge state: run=2,charge=3");
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep,
@@ -42,7 +48,7 @@ static long FAD_IOControl(struct file *filep,
 static unsigned int FadPoll(struct file *filp, poll_table * pt);
 static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
 		       loff_t * f_pos);
-
+struct wakeup_source *get_suspend_wakup_source(void);
 static PFAD_HW_INDEP_INFO gpDev;
 
 static struct file_operations fad_fops = {
@@ -117,6 +123,7 @@ static void cpu_deinitialize(void)
 	}
 }
 
+
 /**
  * Device attribute "fadsuspend" to sync with application during suspend/resume
  *
@@ -124,10 +131,25 @@ static void cpu_deinitialize(void)
 
 static ssize_t show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	if (gpDev->bSuspend)
-		strcpy(buf, "suspend\n");
-	else
-		strcpy(buf, "run\n");
+	switch(power_state)
+	{
+	case SUSPEND_STATE:
+		strcpy(buf, "suspend");
+		break;
+
+	case ON_STATE:
+		strcpy(buf, "run");
+		break;
+
+	case USB_CHARGE_STATE:
+		strcpy(buf, "charge");
+		break;
+
+	default:
+		strcpy(buf, "unknown");
+		break;
+	}
+
 	return strlen(buf);
 }
 
@@ -145,7 +167,52 @@ static ssize_t store(struct device *dev, struct device_attribute *attr, const ch
 	return sizeof(char);
 }
 
+
+static ssize_t charge_state_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+{
+
+	if(!strncmp(buf,"run",strlen("run")))
+			power_state = ON_STATE;
+	else if(!strncmp(buf,"charge",strlen("charge")))
+			power_state = USB_CHARGE_STATE;
+	else
+		return -EINVAL;
+
+	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
+	return len;
+}
+
+
+
+static DEVICE_ATTR(charge_state, S_IRUGO | S_IWUSR, show, charge_state_store);
 static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
+
+/*
+ * Get reason camera woke from standby
+ *
+ */
+int get_wake_reason(void)
+{
+	struct wakeup_source *ws = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
+	ws = get_suspend_wakup_source();
+#endif
+
+	if(!ws)
+		goto err_wake;
+
+	if(strstr(ws->name,"keyboard"))
+		return ON_OFF_BUTTON_WAKE;
+
+	if(strstr(ws->name,"wake"))
+		return USB_CABLE_WAKE;
+
+err_wake:
+	pr_err("Unknown suspend wake reason");
+	return UNKNOWN_WAKE;
+}
+
+
 
 /**
  * Power notify callback for application sync during suspend/resume
@@ -172,6 +239,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		pr_debug("fad_notify: SUSPEND %d\n", gpDev->standbyMinutes);
 
 		// Make appcore enter standby
+		power_state = SUSPEND_STATE;
 		gpDev->bSuspend = 1;
 		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
 
@@ -190,6 +258,11 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 
 	case PM_POST_SUSPEND:
 		pr_debug("fad_notify: POST_SUSPEND\n");
+		if(get_wake_reason() == USB_CABLE_WAKE)
+			power_state = USB_CHARGE_STATE;
+		else
+			power_state = ON_STATE;
+
 		gpDev->bSuspend = 0;
 		alarm_cancel(gpDev->alarm);
 		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
@@ -226,7 +299,9 @@ static int fad_probe(struct platform_device *pdev)
 
 	// Set up suspend handling
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
+
 #ifdef CONFIG_OF
+	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_charge_state);
 	gpDev->nb.notifier_call = fad_notify;
 	gpDev->nb.priority = 0;
 	register_pm_notifier(&gpDev->nb);

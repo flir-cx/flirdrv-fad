@@ -25,6 +25,19 @@ enum {
 	RESTART_REASON_WATCH = 0x02,
 };
 
+enum POWER_STATE{
+	UNKNOWN_STATE,
+	SUSPEND_STATE,
+	ON_STATE,
+	USB_CHARGE_STATE
+};
+
+enum WAKE_REASON{
+	UNKNOWN_WAKE,
+	ON_OFF_BUTTON_WAKE,
+	USB_CABLE_WAKE
+};
+
 extern DWORD g_RestartReason;
 
 struct alarm;
