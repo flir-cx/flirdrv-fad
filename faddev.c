@@ -41,6 +41,8 @@ DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 static 	int	power_state = ON_STATE;
 module_param(power_state, int, 0);
 MODULE_PARM_DESC(power_state, "Camera charge state: run=2,charge=3");
+static	int	timed_standby;
+module_param(timed_standby, int, 0);
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep,
@@ -172,9 +174,9 @@ static ssize_t charge_state_store(struct device *dev, struct device_attribute *a
 {
 
 	if(!strncmp(buf,"run",strlen("run")))
-			power_state = ON_STATE;
+		power_state = ON_STATE;
 	else if(!strncmp(buf,"charge",strlen("charge")))
-			power_state = USB_CHARGE_STATE;
+		power_state = USB_CHARGE_STATE;
 	else
 		return -EINVAL;
 
@@ -182,8 +184,28 @@ static ssize_t charge_state_store(struct device *dev, struct device_attribute *a
 	return len;
 }
 
+static ssize_t show_timed(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	if(timed_standby)
+		strcpy(buf, "on");
+	else
+		strcpy(buf, "off");
 
+	return strlen(buf);
+}
 
+static ssize_t timed_standby_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+{
+	if(!strncmp(buf,"1",1))
+		timed_standby = true;
+	else if(!strncmp(buf,"0",1))
+		timed_standby = false;
+	else
+		return -EINVAL;
+	return len;
+}
+
+static DEVICE_ATTR(timed_standby, S_IRUGO | S_IWUSR, show_timed, timed_standby_store);
 static DEVICE_ATTR(charge_state, S_IRUGO | S_IWUSR, show, charge_state_store);
 static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
 
@@ -197,6 +219,9 @@ int get_wake_reason(void)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
 	ws = get_suspend_wakup_source();
 #endif
+
+	if(timed_standby)
+		return ON_OFF_BUTTON_WAKE;
 
 	if(!ws)
 		goto err_wake;
@@ -220,6 +245,7 @@ err_wake:
  */
 
 #ifdef CONFIG_OF
+/** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
 {
 	pr_info("Standby timeout\n");
@@ -227,6 +253,14 @@ enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
 	orderly_poweroff(1);
 
 	// Not supposed to be here
+	return ALARMTIMER_NORESTART;
+}
+
+/** Wake up camera after 1 minute in (timed) standby */
+enum alarmtimer_restart fad_standby_wakeup (struct alarm *alarm, ktime_t kt)
+{
+	pr_info("Standby wakeup\n");
+
 	return ALARMTIMER_NORESTART;
 }
 
@@ -243,9 +277,15 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		gpDev->bSuspend = 1;
 		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
 
-		// Set a timer to wake us up in 6 hours
-		alarm_init(gpDev->alarm, ALARM_REALTIME, &fad_standby_timeout);
-		kt = ktime_set(60 * gpDev->standbyMinutes, 0);
+		if (timed_standby) {
+			// Set a timer to wake us up in 1 minute
+			alarm_init(gpDev->alarm, ALARM_REALTIME, &fad_standby_wakeup);
+			kt = ktime_set(60, 0);
+		} else {
+			// Set a timer to wake us up in 6 hours
+			alarm_init(gpDev->alarm, ALARM_REALTIME, &fad_standby_timeout);
+			kt = ktime_set(60 * gpDev->standbyMinutes, 0);
+		}
 		alarm_start_relative(gpDev->alarm, kt);
 
 		// Wait for appcore
@@ -299,6 +339,7 @@ static int fad_probe(struct platform_device *pdev)
 
 	// Set up suspend handling
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
+	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_timed_standby);
 
 #ifdef CONFIG_OF
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_charge_state);
