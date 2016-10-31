@@ -31,6 +31,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/reboot.h>
 #include <../drivers/base/power/power.h>
+#include <asm/system_info.h>
 
 #define EUNKNOWNCPU 3
 
@@ -404,7 +405,6 @@ static int __init FAD_Init(void)
 	int retval = 0;
 
 	pr_info("FAD_Init\n");
-
 	// Allocate (and zero-initiate) our control structure.
 	gpDev = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
 	if (! gpDev) {
@@ -694,7 +694,9 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			PFADDEVIOCTLSECURITY pSecurity =
 			    (PFADDEVIOCTLSECURITY) pBuf;
 			pSecurity->ulVersion = INITIAL_VERSION;
-			pSecurity->ullUniqueID = 0;
+			pSecurity->ullUniqueID = system_serial_high;
+			pSecurity->ullUniqueID <<= 32;
+			pSecurity->ullUniqueID += system_serial_low;
 			pSecurity->ulRequire30HzCFClevel = 0;
 			pSecurity->ulRequiredConfigCFClevel = 0;
 		}
