@@ -149,11 +149,6 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 				 &gpDev->Keypad_bl_medium,
 				 &gpDev->Keypad_bl_high);
 
-	gpDev->pijk_cdev->brightness = gpDev->Keypad_bl_low;
-	gpDev->pijk_cdev->brightness_set(gpDev->pijk_cdev, gpDev->pijk_cdev->brightness);
-	gpDev->pike_cdev->brightness = gpDev->Keypad_bl_low;
-	gpDev->pike_cdev->brightness_set(gpDev->pike_cdev, gpDev->pike_cdev->brightness);
-
 
 	if (gpDev->bHasLaser) {
 		int pin;
