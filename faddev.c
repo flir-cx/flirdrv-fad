@@ -31,8 +31,11 @@
 #include <linux/alarmtimer.h>
 #include <linux/reboot.h>
 #include <../drivers/base/power/power.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 #include <asm/system_info.h>
-
+#else
+#include <asm/system.h>
+#endif
 #define EUNKNOWNCPU 3
 
 
