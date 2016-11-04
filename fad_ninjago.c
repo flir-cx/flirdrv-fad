@@ -89,26 +89,6 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32_index(gpDev->node,
 				   "hasGPS", 0, &gpDev->bHasGPS);
 
-	if (gpDev->bHasLaser) {
-		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node,
-					      "laser_on-gpios", 0, NULL);
-		if (gpio_is_valid(pin) == 0){
-			pr_err("flirdrv-fad: LaserON can not be used\n");
-		} else {
-			pr_debug("%s: laser_on_gpio %i\n", __func__, pin);
-			gpDev->laser_on_gpio = pin;
-			gpio_request(pin, "LaserON");
-			gpio_direction_input(pin);
-			retval = InitLaserIrq(gpDev);
-			if (retval) {
-				pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
-				retval = -ENOLASERIRQ;
-				goto EXIT_NO_LASERIRQ;
-			}
-		}
-	}
-
 	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
 	if(IS_ERR(gpDev->reg_optics_power))
 		dev_err(dev,"can't get regulator optics_power");
@@ -138,9 +118,6 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	return retval;
 
 EXIT_NO_LASERIRQ:
-	if(gpDev->bHasLaser){
-		FreeLaserIrq(gpDev);
-	}
 #endif
 	return retval;
 }
@@ -153,14 +130,6 @@ EXIT_NO_LASERIRQ:
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
 
-	if (gpDev->bHasLaser) {
-		FreeLaserIrq(gpDev);
-	}
-#ifdef CONFIG_OF
-	if(gpDev->laser_on_gpio){
-		gpio_free(gpDev->laser_on_gpio);
-	}
-#endif
 }
 
 
