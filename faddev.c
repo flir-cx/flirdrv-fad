@@ -84,7 +84,7 @@ static int cpu_initialize(void)
 {
 	int retval;
 #ifdef CONFIG_OF
-	if(of_machine_is_compatible("fsl,imx6dl-evco"))
+	if(of_machine_is_compatible("fsl,imx6dl-ec101"))
 		retval = SetupMX6Platform(gpDev);
 	else
 #endif
@@ -113,7 +113,7 @@ static int cpu_initialize(void)
 static void cpu_deinitialize(void)
 {
 #ifdef CONFIG_OF
-	if(of_machine_is_compatible("fsl,imx6dl-evco"))
+	if(of_machine_is_compatible("fsl,imx6dl-ec101"))
 		InvSetupMX6Platform(gpDev);
 	else
 #endif
