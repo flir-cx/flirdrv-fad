@@ -230,7 +230,7 @@ int get_wake_reason(void)
 	if(!ws)
 		goto err_wake;
 
-	if(strstr(ws->name,"keyboard"))
+	if(strstr(ws->name,"onkey"))
 		return ON_OFF_BUTTON_WAKE;
 
 	if(strstr(ws->name,"wake"))
