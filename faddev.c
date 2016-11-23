@@ -236,6 +236,12 @@ int get_wake_reason(void)
 	if(strstr(ws->name,"wake"))
 		return USB_CABLE_WAKE;
 
+	if(strstr(ws->name,"rtc") && !timed_standby) {
+		pr_err("Standby shutdown\n");
+		orderly_poweroff(1);
+		return UNKNOWN_WAKE;
+	}
+
 err_wake:
 	pr_err("Unknown suspend wake reason");
 	return UNKNOWN_WAKE;
@@ -252,7 +258,7 @@ err_wake:
 /** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
 {
-	pr_info("Standby timeout\n");
+	pr_err("Standby timeout\n");
 
 	orderly_poweroff(1);
 
