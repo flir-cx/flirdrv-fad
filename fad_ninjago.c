@@ -60,6 +60,8 @@ static BOOL getGPSEnable(BOOL *on);
 
 static int suspend(PFAD_HW_INDEP_INFO gpDev);
 static int resume(PFAD_HW_INDEP_INFO gpDev);
+int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
+int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
 
 // Code
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
@@ -76,6 +78,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pSetLaserMode = setLaserMode;
 	gpDev->pSetGPSEnable = setGPSEnable;
 	gpDev->pGetGPSEnable = getGPSEnable;
+	gpDev->pSetChargerSuspend = SetChargerSuspend;
 	gpDev->suspend = suspend;
 	gpDev->resume = resume;
 
@@ -111,13 +114,13 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if(IS_ERR(gpDev->reg_motor_sleep))
 		dev_err(dev,"can't get regulator motor_sleep");
 	else
-		retval = regulator_enable(gpDev->reg_motor_sleep);
+		retval = SetMotorSleepRegulator(gpDev, true);
 
 	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
 
 	return retval;
 
-EXIT_NO_LASERIRQ:
+	//EXIT_NO_LASERIRQ:
 #endif
 	return retval;
 }
@@ -307,7 +310,7 @@ int suspend(PFAD_HW_INDEP_INFO gpDev)
 	int res = 0;
 
 #ifdef CONFIG_OF
-	res = regulator_disable(gpDev->reg_motor_sleep);
+	res = SetMotorSleepRegulator(gpDev,false);
 	res |= regulator_disable(gpDev->reg_ring_sensor);
 	res |= regulator_disable(gpDev->reg_position_sensor);
 	res |= regulator_disable(gpDev->reg_optics_power);
@@ -324,7 +327,49 @@ int resume(PFAD_HW_INDEP_INFO gpDev)
 	res = regulator_enable(gpDev->reg_optics_power);
 	res |= regulator_enable(gpDev->reg_position_sensor);
 	res |= regulator_enable(gpDev->reg_ring_sensor);
-	res |= regulator_enable(gpDev->reg_motor_sleep);
+	res |= SetMotorSleepRegulator(gpDev, true);
+#endif
+	return res;
+}
+
+/**
+ * Mode for disabling misc regulators during suspend for charging
+ *
+ * @param suspend
+ *
+ * @return
+ */
+int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend)
+{
+	int res;
+#ifdef CONFIG_OF
+	res = SetMotorSleepRegulator(gpDev, suspend);
+#endif
+	return res;
+}
+
+int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
+{
+	int res;
+	static int enabled = false;
+#ifdef CONFIG_OF
+	if(on){
+		if (! enabled){
+			res = regulator_enable(gpDev->reg_motor_sleep);
+			enabled = true;
+		} else {
+			//If already enabled, silently exit...
+			res = 0;
+		}
+	} else {
+		if(enabled){
+			res = regulator_disable(gpDev->reg_motor_sleep);
+			enabled = false;
+		} else {
+			//If already disabled, silently exit...
+			res = 0;
+		}
+	}
 #endif
 	return res;
 }

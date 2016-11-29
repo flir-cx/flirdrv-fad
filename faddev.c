@@ -209,9 +209,38 @@ static ssize_t timed_standby_store(struct device *dev, struct device_attribute *
 	return len;
 }
 
+static ssize_t chargersuspend_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+{
+	int ret=0;
+	if(gpDev->pSetChargerSuspend != NULL){
+		if(strncmp(buf, "1", 1) == 0){
+			gpDev->pSetChargerSuspend(gpDev, true);
+			ret=len;
+		} else 	if(strncmp(buf, "0", 1) == 0){
+			gpDev->pSetChargerSuspend(gpDev, false);
+			ret=len;
+		} else {
+			pr_err("chargersuspend unknown command... 1/0 accepted\n");
+		}
+	}
+	return ret;
+}
+
 static DEVICE_ATTR(timed_standby, S_IRUGO | S_IWUSR, show_timed, timed_standby_store);
 static DEVICE_ATTR(charge_state, S_IRUGO | S_IWUSR, show, charge_state_store);
 static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
+static DEVICE_ATTR(chargersuspend, S_IRUGO | S_IWUSR, NULL, chargersuspend_store);
+
+static struct attribute *faddev_sysfs_attrs[] = {
+	&dev_attr_chargersuspend.attr,
+	NULL
+};
+
+static struct attribute_group faddev_sysfs_attr_grp = {
+	.name = "control",
+	.attrs = faddev_sysfs_attrs,
+};
+
 
 /*
  * Get reason camera woke from standby
@@ -350,6 +379,11 @@ static int fad_probe(struct platform_device *pdev)
 	// Set up suspend handling
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_timed_standby);
+
+	ret = sysfs_create_group(&gpDev->pLinuxDevice->dev.kobj, &faddev_sysfs_attr_grp);
+	if(ret){
+		pr_err("FADDEV Error creating sysfs grp control\n");
+	}
 
 #ifdef CONFIG_OF
 	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_charge_state);

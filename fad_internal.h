@@ -124,6 +124,7 @@ typedef struct __FAD_HW_INDEP_INFO {
                                      PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
     BOOL(*pSetGPSEnable) (BOOL enabled);
     BOOL(*pGetGPSEnable) (BOOL * enabled);
+	int (*pSetChargerSuspend)(struct __FAD_HW_INDEP_INFO *gpDev, BOOL suspend);
 	void (*pWdogInit) (struct __FAD_HW_INDEP_INFO * gpDev, UINT32 Timeout);
 	 BOOL(*pWdogService) (struct __FAD_HW_INDEP_INFO * gpDev);
 	void (*pCleanupHW) (struct __FAD_HW_INDEP_INFO * gpDev);
