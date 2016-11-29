@@ -79,6 +79,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pGetKeypadSubjBacklight = GetKeypadSubjBacklight;
 	gpDev->pSetGPSEnable = setGPSEnable;
 	gpDev->pGetGPSEnable = getGPSEnable;
+	gpDev->pSetChargerSuspend = NULL;
 	gpDev->pWdogInit = WdogInit;
 	gpDev->pWdogService = WdogService;
 	gpDev->pCleanupHW = CleanupHW;
