@@ -165,7 +165,7 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
  */
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-	f(on){
+	if(on){
 		gpDev->bLaserEnable=true;
 	} else {
 		gpDev->bLaserEnable=false;
