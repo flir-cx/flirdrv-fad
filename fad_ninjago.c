@@ -20,9 +20,6 @@
 #include <linux/errno.h>
 #include <linux/leds.h>
 #include "flir-kernel-version.h"
-#include <linux/workqueue.h>
-#include <linux/jiffies.h>
-
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #include <linux/of.h>
@@ -35,15 +32,6 @@
 
 extern struct input_dev* ca111_get_input_dev(void);
 extern int ca111_get_laserstatus(void);
-
-struct fad_ninjago {
-	struct delayed_work laser_wq;
-	PFAD_HW_INDEP_INFO gpDev;
-	unsigned int time;
-	int laser_on;
-};
-
-static struct fad_ninjago fadninjago;
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -58,7 +46,7 @@ static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode);
-void fad_laser_wq (unsigned long unused);
+
 void startlaser(PFAD_HW_INDEP_INFO gpDev);
 void stoplaser(void);
 void startmeasure(int key, int value);
@@ -129,9 +117,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 		retval = SetMotorSleepRegulator(gpDev, true);
 
 	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
-	INIT_DELAYED_WORK(&fadninjago.laser_wq, (void (*)(struct work_struct *)) fad_laser_wq);
 
-	fadninjago.time = 0;
 	return retval;
 
 	//EXIT_NO_LASERIRQ:
@@ -184,29 +170,16 @@ void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 #endif
 }
 
-void fad_laser_wq (unsigned long unused){
-	if(! fadninjago.laser_on){
-		if(time_after(jiffies, fadninjago.time + 3*HZ)){
-			stoplaser();
-		} else {
-			schedule_delayed_work(&fadninjago.laser_wq, 5*HZ/10);
-		}
-	}
-}
-
-
 void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
         if (gpDev->bLaserEnable){
-		fadninjago.laser_on=on;
-		fadninjago.gpDev = gpDev;
                 if(on){
-			startlaser(gpDev);
-			if (! cancel_delayed_work(&fadninjago.laser_wq))
-				fadninjago.time = jiffies;
-		} else{
-			schedule_delayed_work(&fadninjago.laser_wq, HZ/10);
-		}
+                        pr_debug("%s: Turning laser on", __func__);
+                        startlaser(gpDev);
+                } else{
+                        pr_debug("%s: Turning laser off", __func__);
+                        stoplaser();
+                }
         } else {
                 pr_debug("%s: Turning laser off", __func__);
                 stoplaser();
@@ -216,7 +189,8 @@ void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
     BOOL value = true;
-    return value;
+    pr_err("%s return value true\n", __func__);
+	return value;
 }
 
 void startlaser(PFAD_HW_INDEP_INFO gpDev)
