@@ -20,9 +20,6 @@
 #include <linux/errno.h>
 #include <linux/leds.h>
 #include "flir-kernel-version.h"
-#include <linux/workqueue.h>
-#include <linux/jiffies.h>
-
 #ifdef CONFIG_OF
 #include <linux/of_gpio.h>
 #include <linux/of.h>
@@ -35,15 +32,6 @@
 
 extern struct input_dev* ca111_get_input_dev(void);
 extern int ca111_get_laserstatus(void);
-
-struct fad_ninjago {
-	struct delayed_work laser_wq;
-	PFAD_HW_INDEP_INFO gpDev;
-	unsigned int time;
-	int laser_on;
-};
-
-static struct fad_ninjago fadninjago;
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -58,7 +46,7 @@ static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode);
-void fad_laser_wq (unsigned long unused);
+
 void startlaser(PFAD_HW_INDEP_INFO gpDev);
 void stoplaser(void);
 void startmeasure(int key, int value);
@@ -128,12 +116,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = SetMotorSleepRegulator(gpDev, true);
 
-	of_property_read_u32(gpDev->node, "standbyMinutes",
-			     &gpDev->standbyMinutes);
-	INIT_DELAYED_WORK(&fadninjago.laser_wq,
-			  (void (*)(struct work_struct *)) fad_laser_wq);
+	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
 
-	fadninjago.time = 0;
 	return retval;
 
 	//EXIT_NO_LASERIRQ:
@@ -165,12 +149,12 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
  */
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-	if(on){
-		gpDev->bLaserEnable=true;
-	} else {
-		gpDev->bLaserEnable=false;
-		stoplaser();
-	}
+    if(on){
+        gpDev->bLaserEnable=true;
+    } else {
+        gpDev->bLaserEnable=false;
+        stoplaser();
+    }
 }
 
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
@@ -182,79 +166,66 @@ void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 	pLaserStatus->bLaserIsOn = state;  //if laser is on
 	pLaserStatus->bLaserPowerEnabled = true; // if switch is pressed...
 #else
-	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n",
-	       __func__);
+	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
 #endif
 }
 
-void fad_laser_wq (unsigned long unused){
-	if(! fadninjago.laser_on){
-		if(time_after(jiffies, fadninjago.time + 3*HZ)){
-			stoplaser();
-		} else {
-			schedule_delayed_work(&fadninjago.laser_wq, 5*HZ/10);
-		}
-	}
-}
-
-
 void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-	if (gpDev->bLaserEnable){
-		fadninjago.laser_on=on;
-		fadninjago.gpDev = gpDev;
-		if(on){
-			startlaser(gpDev);
-			if (! cancel_delayed_work(&fadninjago.laser_wq))
-				fadninjago.time = jiffies;
-		} else{
-			schedule_delayed_work(&fadninjago.laser_wq, HZ/10);
-		}
-	} else {
-		pr_debug("%s: Turning laser off", __func__);
-		stoplaser();
-	}
+        if (gpDev->bLaserEnable){
+                if(on){
+                        pr_debug("%s: Turning laser on", __func__);
+                        startlaser(gpDev);
+                } else{
+                        pr_debug("%s: Turning laser off", __func__);
+                        stoplaser();
+                }
+        } else {
+                pr_debug("%s: Turning laser off", __func__);
+                stoplaser();
+        }
 }
 
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
     BOOL value = true;
-    return value;
+    pr_err("%s return value true\n", __func__);
+	return value;
 }
 
 void startlaser(PFAD_HW_INDEP_INFO gpDev)
 {
 #ifdef CONFIG_OF
-	switch (gpDev->laserMode){
-	case LASERMODE_POINTER: 
-		startmeasure(MSC_RAW, 1);
-		break;
-	case LASERMODE_DISTANCE:
-		switch (gpDev->ldmAccuracy){
-		case LASERMODE_DISTANCE_LOW_ACCURACY:
-			if(gpDev->ldmContinous){
-				startmeasure_lq_continous();
-			} else{
-				startmeasure_lq_single();
-			}
-			break;
-		case LASERMODE_DISTANCE_HIGH_ACCURACY:
-			if(gpDev->ldmContinous){
-				startmeasure_hq_continous();
-			} else{
-				startmeasure_hq_single();
-			}
-			break;
-		default:
-			pr_err("%s: Unknown ldm accuracy mode (%i)...\n",
-			       __func__, gpDev->ldmAccuracy);
-			break;
-		}
-		break;
-	default: 
-		pr_err("%s: Unknown lasermode...\n", __func__);
-		break;
-	}
+        switch (gpDev->laserMode){
+        case LASERMODE_POINTER: 
+                startmeasure(MSC_RAW, 1);
+                break;
+        case LASERMODE_DISTANCE:
+                switch (gpDev->ldmAccuracy){
+                case LASERMODE_DISTANCE_LOW_ACCURACY:
+                        if(gpDev->ldmContinous){
+                                startmeasure_lq_continous();
+                        } else{
+                                startmeasure_lq_single();
+                        }
+                        break;
+                case LASERMODE_DISTANCE_HIGH_ACCURACY:
+                        if(gpDev->ldmContinous){
+                                startmeasure_hq_continous();
+                        } else{
+                                startmeasure_hq_single();
+                        }
+                        break;
+                        
+                default:
+                        pr_err("%s: Unknown ldm accuracy mode (%i)...\n", __func__, gpDev->ldmAccuracy);
+                        break;
+                }
+                break;
+        default: 
+                pr_err("%s: Unknown lasermode...\n", __func__);
+                break;
+        }
 #endif
 }
 
@@ -266,7 +237,7 @@ void stoplaser(void)
 
 void stopmeasure(void)
 {
-	startmeasure(MSC_RAW, 0);
+        startmeasure(MSC_RAW, 0);
 }
 
 void startmeasure(int key, int value)
@@ -314,17 +285,16 @@ void startmeasure_lq_continous(void)
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
 {
 #ifdef CONFIG_OF
-	gpDev->laserMode = pLaserMode->mode;
-	gpDev->ldmAccuracy = pLaserMode->accuracy;
-	gpDev->ldmContinous = pLaserMode->continousMeasurment;
+        gpDev->laserMode = pLaserMode->mode;
+        gpDev->ldmAccuracy = pLaserMode->accuracy;
+        gpDev->ldmContinous = pLaserMode->continousMeasurment;
 #endif
 }
 
 
 BOOL setGPSEnable(BOOL on)
 {
-	//setting GPS enabled /disabled is handled through linux
-	//device PM system
+	//setting GPS enabled /disabled is handled through linux device PM system
 	// opening/closing the tty device is enough for userspace...
 	return TRUE;
 }
