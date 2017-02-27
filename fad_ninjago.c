@@ -25,6 +25,7 @@
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/backlight.h>
 #endif
 #include <linux/leds.h>
 #include <linux/platform_device.h>
@@ -117,6 +118,10 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 		retval = SetMotorSleepRegulator(gpDev, true);
 
 	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
+
+	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
+	if (gpDev->backlight == NULL)
+		dev_err(dev,"cant get backlight property");
 
 	return retval;
 
