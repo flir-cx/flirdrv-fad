@@ -30,6 +30,7 @@
 #include <linux/miscdevice.h>
 #include <linux/alarmtimer.h>
 #include <linux/reboot.h>
+#include <linux/backlight.h>
 #include <../drivers/base/power/power.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 #include <asm/system_info.h>
@@ -289,9 +290,14 @@ enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
 {
 	pr_err("Standby timeout\n");
 
-	orderly_poweroff(1);
+	// Switch of backlight as fast as possible (just activated in early resume)
+	if (gpDev->backlight) {
+		gpDev->backlight->props.power=4;
+		gpDev->backlight->props.brightness=0;
+		backlight_update_status(gpDev->backlight);
+	}
 
-	// Not supposed to be here
+	// Actual switch off will be done in get_wake_reason() when resume finished
 	return ALARMTIMER_NORESTART;
 }
 
