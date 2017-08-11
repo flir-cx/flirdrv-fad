@@ -120,8 +120,6 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
 
 	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
-	if (gpDev->backlight == NULL)
-		dev_err(dev,"cant get backlight property");
 
 	return retval;
 
