@@ -85,7 +85,8 @@ static int cpu_initialize(void)
 {
 	int retval;
 #ifdef CONFIG_OF
-	if(of_machine_is_compatible("fsl,imx6dl-ec101"))
+	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
+	    of_machine_is_compatible("fsl,imx6dl-ec501"))
 		retval = SetupMX6Platform(gpDev);
 	else
 #endif
@@ -114,7 +115,8 @@ static int cpu_initialize(void)
 static void cpu_deinitialize(void)
 {
 #ifdef CONFIG_OF
-	if(of_machine_is_compatible("fsl,imx6dl-ec101"))
+	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
+	    of_machine_is_compatible("fsl,imx6dl-ec501"))
 		InvSetupMX6Platform(gpDev);
 	else
 #endif
@@ -555,13 +557,13 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		break;
 
 	case IOCTL_FAD_SET_LASER_MODE:
-        if(gpDev->pSetLaserMode){
-            gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE) pBuf);
-            retval = ERROR_SUCCESS;
-        } else {
-            retval = ERROR_NOT_SUPPORTED;
-        }
-        break;
+		if (!gpDev->bHasLaser || !gpDev->pSetLaserMode) {
+			retval = ERROR_NOT_SUPPORTED;
+		} else {
+			gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE)pBuf);
+			retval = ERROR_SUCCESS;
+		}
+		break;
 
 	case IOCTL_SET_APP_EVENT:
 		retval = ERROR_SUCCESS;
