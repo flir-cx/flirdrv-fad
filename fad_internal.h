@@ -75,6 +75,8 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int laser_on_gpio;
 	int laser_soft_gpio;
 	int laser_switch_gpio;
+	int digin0_gpio;
+	int digin1_gpio;
 
 	struct regulator *reg_opt3v6;
 	struct regulator *reg_optics_power;
@@ -107,7 +109,7 @@ typedef struct __FAD_HW_INDEP_INFO {
                               FADDEVIOCTLLED * pLED);
     DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
                               FADDEVIOCTLLED * pLED);
-	void (*pGetDigitalStatus) (PFADDEVIOCTLDIGIO pDigioStatus);
+	void (*pGetDigitalStatus) (struct __FAD_HW_INDEP_INFO *, PFADDEVIOCTLDIGIO pDigioStatus);
 	void (*pSetLaserStatus) (struct __FAD_HW_INDEP_INFO *,
                              BOOL on);
 	void (*pGetLaserStatus) (struct __FAD_HW_INDEP_INFO *,

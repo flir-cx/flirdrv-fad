@@ -32,7 +32,7 @@
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus);
+static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 			   PFADDEVIOCTLLASER pLaserStatus);
@@ -237,7 +237,7 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	return ERROR_SUCCESS;
 }
 
-void getDigitalStatus(PFADDEVIOCTLDIGIO pDigioStatus)
+void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
 {
 	pDigioStatus->ucNumOfDigIn = 1;
 	pDigioStatus->ucNumOfDigOut = 1;

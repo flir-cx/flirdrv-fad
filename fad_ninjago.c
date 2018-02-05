@@ -41,6 +41,8 @@ extern int ca111_get_laserstatus(void);
 
 // Function prototypes
 
+static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus);
+
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 			   PFADDEVIOCTLLASER pLaserStatus);
@@ -72,6 +74,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	struct device *dev = &gpDev->pLinuxDevice->dev;
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 #endif
+	gpDev->pGetDigitalStatus = getDigitalStatus;
 	gpDev->pSetLaserStatus = setLaserStatus;
 	gpDev->pGetLaserStatus = getLaserStatus;
 	gpDev->pSetLaserActive = SetLaserActive;
@@ -92,6 +95,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 				   "hasLaser", 0, &gpDev->bHasLaser);
 	of_property_read_u32_index(gpDev->node,
 				   "hasGPS", 0, &gpDev->bHasGPS);
+	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
 
 	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
 	if(IS_ERR(gpDev->reg_optics_power))
@@ -121,6 +125,26 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
 
+	if (gpDev->bHasDigitalIO) {
+		int pin;
+		pin = of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0, NULL);
+		if (gpio_is_valid(pin) == 0){
+			pr_err("flirdrv-fad: DigIN0 can not be used\n");
+		} else {
+			gpDev->digin0_gpio = pin;
+			gpio_request(pin, "DigIN0");
+			gpio_direction_input(pin);
+		}
+		pin = of_get_named_gpio_flags(gpDev->node, "digin1-gpios", 0, NULL);
+		if (gpio_is_valid(pin) == 0){
+			pr_err("flirdrv-fad: DigIN1 can not be used\n");
+		} else {
+			gpDev->digin1_gpio = pin;
+			gpio_request(pin, "DigIN1");
+			gpio_direction_input(pin);
+		}
+	}
+
 	return retval;
 
 	//EXIT_NO_LASERIRQ:
@@ -138,6 +162,19 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 }
 
+void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
+{
+	int digin0_value=0;
+	int digin1_value=0;
+#ifdef CONFIG_OF
+	if(gpDev->digin0_gpio)
+		digin0_value = gpio_get_value_cansleep(gpDev->digin0_gpio);
+	if(gpDev->digin1_gpio)
+		digin1_value = gpio_get_value_cansleep(gpDev->digin1_gpio);
+#endif
+	pDigioStatus->usInputState |= digin0_value ? 0x01 : 0x00;
+	pDigioStatus->usInputState |= digin1_value ? 0x02 : 0x00;
+}
 
 /** 
  * setLaserStatus tells if *laser* is allowed to be turned on, but will not 

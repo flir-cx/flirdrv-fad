@@ -603,7 +603,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetDigitalStatus((PFADDEVIOCTLDIGIO) pBuf);
+			gpDev->pGetDigitalStatus(gpDev, (PFADDEVIOCTLDIGIO) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
