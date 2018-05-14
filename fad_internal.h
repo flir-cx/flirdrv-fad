@@ -77,6 +77,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int laser_switch_gpio;
 	int digin0_gpio;
 	int digin1_gpio;
+	int trigger_gpio;
 
 	struct regulator *reg_opt3v6;
 	struct regulator *reg_optics_power;
@@ -103,6 +104,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasBuzzer;
 	BOOL bHasKpBacklight;
 	BOOL bHasSoftwareControlledLaser;
+	BOOL bHasTrigger;
 	BOOL bSuspend;
 
     DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
@@ -148,6 +150,7 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev);
 int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
 void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev);
 void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
+irqreturn_t fadTriggerIST(int irq, void *dev_id);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 int SetupMX51(PFAD_HW_INDEP_INFO gpDev);

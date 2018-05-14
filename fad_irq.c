@@ -161,3 +161,10 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+
+irqreturn_t fadTriggerIST(int irq, void *dev_id)
+{
+	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
+	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "trigger_poll");
+	return IRQ_HANDLED;
+}

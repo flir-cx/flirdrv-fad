@@ -96,6 +96,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32_index(gpDev->node,
 				   "hasGPS", 0, &gpDev->bHasGPS);
 	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
+	of_property_read_u32_index(gpDev->node, "hasTrigger", 0, &gpDev->bHasTrigger);
 
 	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
 	if(IS_ERR(gpDev->reg_optics_power))
@@ -142,6 +143,23 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 			gpDev->digin1_gpio = pin;
 			gpio_request(pin, "DigIN1");
 			gpio_direction_input(pin);
+		}
+	}
+
+	if (gpDev->bHasTrigger) {
+		int pin;
+		pin = of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0, NULL);
+		if (gpio_is_valid(pin) == 0){
+			pr_err("flirdrv-fad: Trigger can not be used\n");
+		} else {
+			gpDev->trigger_gpio = pin;
+			gpio_request(pin, "Trigger");
+			gpio_direction_input(pin);
+			if (request_irq(gpio_to_irq(pin), fadTriggerIST,
+					IRQF_TRIGGER_FALLING, "TriggerGPIO", gpDev))
+				pr_err("flridrv-fad: Failed to register interrupt for trigger...\n");
+			else
+				pr_info("flirdrv-fad: Registered interrupt %i for trigger\n", gpio_to_irq(pin));
 		}
 	}
 
