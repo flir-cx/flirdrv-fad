@@ -278,9 +278,7 @@ int get_wake_reason(void)
 
 	if(strstr(ws->name,"rtc") && !timed_standby) {
 		pr_err("Standby shutdown\n");
-		/* orderly_poweroff(1); */
-		/* kernel_power_off(); */
-		pm_power_off();
+		orderly_poweroff(1);
 		return UNKNOWN_WAKE;
 	}
 
