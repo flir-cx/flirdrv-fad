@@ -444,11 +444,19 @@ static int fad_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static void fad_shutdown(struct platform_device *pdev)
+{
+	if (gpDev->suspend)
+		gpDev->suspend(gpDev);
+
+}
+
 static struct platform_driver fad_driver = {
 	.probe      = fad_probe,
 	.remove     = fad_remove,
 	.suspend    = fad_suspend,
 	.resume     = fad_resume,
+	.shutdown   = fad_shutdown,
 	.driver     = {
 		.name   = "fad",
 		.owner  = THIS_MODULE,

@@ -368,12 +368,30 @@ int suspend(PFAD_HW_INDEP_INFO gpDev)
 	int res = 0;
 
 #ifdef CONFIG_OF
-	res = SetMotorSleepRegulator(gpDev,false);
-	res |= regulator_disable(gpDev->reg_ring_sensor);
-	res |= regulator_disable(gpDev->reg_position_sensor);
-	res |= regulator_disable(gpDev->reg_optics_power);
+	pr_debug("Disbling motor regulator...\n");
+	res = SetMotorSleepRegulator(gpDev, false);
+	if (res)
+		pr_err("Motor regulator disable failed..\n");
+	pr_debug("Disbling ring sensor...\n");
+	if (gpDev->reg_ring_sensor) {
+		res = regulator_disable(gpDev->reg_ring_sensor);
+		if (res)
+			pr_err("Ring sensor disable failed..\n");
+	}
+	pr_debug("Disbling position sensor...\n");
+	if (gpDev->reg_position_sensor) {
+		res |= regulator_disable(gpDev->reg_position_sensor);
+		if (res)
+			pr_err("Position sensor disable failed..\n");
+	}
+	pr_debug("Disbling optics power...\n");
+	if (gpDev->reg_optics_power) {
+		res |= regulator_disable(gpDev->reg_optics_power);
+		if (res)
+			pr_err("Optics power disable failed..\n");
+}
 #endif
-	return res;
+	return 0;
 }
 
 
