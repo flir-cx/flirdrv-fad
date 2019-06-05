@@ -41,6 +41,8 @@ extern int ca111_get_laserstatus(void);
 
 // Function prototypes
 
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus);
 
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
@@ -70,10 +72,17 @@ int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
 	int retval = -1;
+	extern struct list_head leds_list;
+	extern struct rw_semaphore leds_list_lock;
+	struct led_classdev *led_cdev;
+
 #ifdef CONFIG_OF
 	struct device *dev = &gpDev->pLinuxDevice->dev;
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 #endif
+
+	gpDev->pGetKAKALedState = getKAKALedState;
+	gpDev->pSetKAKALedState = setKAKALedState;
 	gpDev->pGetDigitalStatus = getDigitalStatus;
 	gpDev->pSetLaserStatus = setLaserStatus;
 	gpDev->pGetLaserStatus = getLaserStatus;
@@ -125,6 +134,16 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
 
 	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
+
+	// Find LEDs
+	down_read(&leds_list_lock);
+	list_for_each_entry(led_cdev, &leds_list, node) {
+		if (strcmp(led_cdev->name, "KAKA_LED2") == 0)
+			gpDev->red_led_cdev = led_cdev;
+		else if (strcmp(led_cdev->name, "KAKA_LED1") == 0)
+			gpDev->blue_led_cdev = led_cdev;
+	}
+	up_read(&leds_list_lock);
 
 	if (gpDev->bHasDigitalIO) {
 		int pin;
@@ -178,6 +197,62 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
 
+}
+
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+{
+	BOOL redLed = FALSE;
+	BOOL blueLed = FALSE;
+
+	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
+		redLed = TRUE;
+	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
+		blueLed = TRUE;
+
+	if ((blueLed == FALSE) && (redLed == FALSE)) {
+		pLED->eState = LED_STATE_OFF;
+		pLED->eColor = LED_COLOR_GREEN;
+	} else {
+		pLED->eState = LED_STATE_ON;
+		if (blueLed && redLed)
+			pLED->eColor = LED_COLOR_YELLOW;
+		else if (redLed)
+			pLED->eColor = LED_COLOR_RED;
+		else
+			pLED->eColor = LED_COLOR_GREEN;
+	}
+
+	return ERROR_SUCCESS;
+}
+
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+{
+	int redLed = 0;
+	int blueLed = 0;
+
+	if (pLED->eState == LED_STATE_ON) {
+		if (pLED->eColor == LED_COLOR_YELLOW) {
+			redLed = 1;
+			blueLed = 1;
+		} else if (pLED->eColor == LED_COLOR_GREEN) {
+			blueLed = 1;
+		} else if (pLED->eColor == LED_COLOR_RED) {
+			redLed = 1;
+		}
+	}
+	if (gpDev->red_led_cdev) {
+		gpDev->red_led_cdev->brightness = redLed;
+		gpDev->red_led_cdev->brightness_set(gpDev->red_led_cdev,
+						    redLed);
+	}
+
+	if (gpDev->blue_led_cdev) {
+		gpDev->blue_led_cdev->brightness = blueLed;
+		gpDev->blue_led_cdev->brightness_set(gpDev->blue_led_cdev,
+						     blueLed);
+	}
+
+	return ERROR_SUCCESS;
 }
 
 void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
