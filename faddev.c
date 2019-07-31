@@ -632,6 +632,28 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		}
 		break;
 
+	case IOCTL_FAD_GET_LED:
+		if (!gpDev->bHasKAKALed)
+			retval = ERROR_NOT_SUPPORTED;
+		else {
+			LOCK(gpDev);
+			gpDev->pGetLedState(gpDev, (PFADDEVIOCTLLED) pBuf);
+			retval = ERROR_SUCCESS;
+			UNLOCK(gpDev);
+		}
+                break;
+
+	case IOCTL_FAD_SET_LED:
+		if (!gpDev->bHasKAKALed)
+			retval = ERROR_NOT_SUPPORTED;
+		else {
+			LOCK(gpDev);
+			gpDev->pSetLedState(gpDev, (PFADDEVIOCTLLED) pBuf);
+			retval = ERROR_SUCCESS;
+			UNLOCK(gpDev);
+		}
+                break;
+
 	case IOCTL_FAD_GET_KAKA_LED:
 		if (!gpDev->bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;

@@ -107,6 +107,10 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasTrigger;
 	BOOL bSuspend;
 
+    DWORD(*pGetLedState) (struct __FAD_HW_INDEP_INFO * gpDev,
+                              FADDEVIOCTLLED * pLED);
+    DWORD(*pSetLedState) (struct __FAD_HW_INDEP_INFO * gpDev,
+                              FADDEVIOCTLLED * pLED);
     DWORD(*pGetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,
                               FADDEVIOCTLLED * pLED);
     DWORD(*pSetKAKALedState) (struct __FAD_HW_INDEP_INFO * gpDev,

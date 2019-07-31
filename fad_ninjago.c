@@ -43,6 +43,8 @@ extern int ca111_get_laserstatus(void);
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus);
 
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
@@ -81,6 +83,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 #endif
 
+	gpDev->pGetLedState = getLedState;
+	gpDev->pSetLedState = setLedState;
 	gpDev->pGetKAKALedState = getKAKALedState;
 	gpDev->pSetKAKALedState = setKAKALedState;
 	gpDev->pGetDigitalStatus = getDigitalStatus;
@@ -199,6 +203,83 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 }
 
+DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+{
+	BOOL redLed = FALSE;
+	BOOL blueLed = FALSE;
+
+	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
+		redLed = TRUE;
+	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
+		blueLed = TRUE;
+
+	if (gpDev->red_led_cdev->blink_delay_on == 500 ||
+	    gpDev->blue_led_cdev->blink_delay_on == 500)
+		pLED->eState = LED_FLASH_SLOW;
+	else if (gpDev->red_led_cdev->blink_delay_on == 100 ||
+		 gpDev->blue_led_cdev->blink_delay_on == 100)
+		pLED->eState = LED_FLASH_FAST;
+	else if ((blueLed == FALSE) && (redLed == FALSE)) {
+		pLED->eState = LED_STATE_OFF;
+	} else {
+		pLED->eState = LED_STATE_ON;
+	}
+
+	return ERROR_SUCCESS;
+}
+
+DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+{
+	BOOL redLed = FALSE;
+	BOOL blueLed = FALSE;
+	unsigned long delay = 0;
+
+	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
+		redLed = TRUE;
+	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
+		blueLed = TRUE;
+
+	if (gpDev->red_led_cdev && gpDev->red_led_cdev->blink_delay_on)
+		redLed = TRUE;
+
+	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->blink_delay_on)
+		blueLed = TRUE;
+
+	if (pLED->eState == LED_FLASH_SLOW || pLED->eState == LED_FLASH_FAST)
+	{
+		if (pLED->eState == LED_FLASH_FAST)
+			delay = 100;
+                else
+			delay = 500;
+		
+		if (redLed) {
+			led_blink_set(gpDev->red_led_cdev, &delay, &delay);
+		}
+
+		if (blueLed) {
+			led_blink_set(gpDev->blue_led_cdev, &delay, &delay);
+		}
+	}
+	else if (pLED->eState == LED_STATE_ON) {
+		if (gpDev->blue_led_cdev) {
+			led_set_brightness(gpDev->blue_led_cdev, LED_FULL);
+		}
+		if (gpDev->red_led_cdev) {
+			led_set_brightness(gpDev->red_led_cdev, LED_OFF);
+		}
+	}
+	else if (pLED->eState == LED_STATE_OFF) {
+		if (gpDev->blue_led_cdev) {
+			led_set_brightness(gpDev->blue_led_cdev, LED_OFF);
+		}
+		if (gpDev->red_led_cdev) {
+			led_set_brightness(gpDev->red_led_cdev, LED_OFF);
+		}
+	}
+
+	return ERROR_SUCCESS;
+}
+
 DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	BOOL redLed = FALSE;
@@ -207,6 +288,12 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
 		redLed = TRUE;
 	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
+		blueLed = TRUE;
+
+	if (gpDev->red_led_cdev && gpDev->red_led_cdev->blink_delay_on)
+		redLed = TRUE;
+
+	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->blink_delay_on)
 		blueLed = TRUE;
 
 	if ((blueLed == FALSE) && (redLed == FALSE)) {
@@ -229,6 +316,7 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	int redLed = 0;
 	int blueLed = 0;
+	unsigned long delay = 0;
 
 	if (pLED->eState == LED_STATE_ON) {
 		if (pLED->eColor == LED_COLOR_YELLOW) {
@@ -240,16 +328,13 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 			redLed = 1;
 		}
 	}
+
 	if (gpDev->red_led_cdev) {
-		gpDev->red_led_cdev->brightness = redLed;
-		gpDev->red_led_cdev->brightness_set(gpDev->red_led_cdev,
-						    redLed);
+		led_set_brightness(gpDev->red_led_cdev, redLed ? LED_FULL : LED_OFF);
 	}
 
 	if (gpDev->blue_led_cdev) {
-		gpDev->blue_led_cdev->brightness = blueLed;
-		gpDev->blue_led_cdev->brightness_set(gpDev->blue_led_cdev,
-						     blueLed);
+		led_set_brightness(gpDev->blue_led_cdev, blueLed ? LED_FULL : LED_OFF);
 	}
 
 	return ERROR_SUCCESS;
