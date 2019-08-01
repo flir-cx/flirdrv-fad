@@ -231,19 +231,15 @@ DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	BOOL redLed = FALSE;
-	BOOL blueLed = FALSE;
+	BOOL greenLed = FALSE;
 	unsigned long delay = 0;
 
-	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
+	// On Bellatrix the KAKA LED consists of a green and a red LED
+        // The blue_led_cdev actually controls a green LED
+	if (gpDev->red_led_cdev && (gpDev->red_led_cdev->brightness || gpDev->red_led_cdev->blink_delay_on))
 		redLed = TRUE;
-	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
-		blueLed = TRUE;
-
-	if (gpDev->red_led_cdev && gpDev->red_led_cdev->blink_delay_on)
-		redLed = TRUE;
-
-	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->blink_delay_on)
-		blueLed = TRUE;
+	if (gpDev->blue_led_cdev && (gpDev->blue_led_cdev->brightness || gpDev->blue_led_cdev->blink_delay_on))
+		greenLed = TRUE;
 
 	if (pLED->eState == LED_FLASH_SLOW || pLED->eState == LED_FLASH_FAST)
 	{
@@ -256,7 +252,7 @@ DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 			led_blink_set(gpDev->red_led_cdev, &delay, &delay);
 		}
 
-		if (blueLed) {
+		if (greenLed) {
 			led_blink_set(gpDev->blue_led_cdev, &delay, &delay);
 		}
 	}
@@ -283,25 +279,21 @@ DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	BOOL redLed = FALSE;
-	BOOL blueLed = FALSE;
+	BOOL greenLed = FALSE;
 
-	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
+	// On Bellatrix the KAKA LED consists of a green and a red LED
+        // The blue_led_cdev actually controls a green LED
+	if (gpDev->red_led_cdev && (gpDev->red_led_cdev->brightness || gpDev->red_led_cdev->blink_delay_on))
 		redLed = TRUE;
-	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
-		blueLed = TRUE;
+	if (gpDev->blue_led_cdev && (gpDev->blue_led_cdev->brightness || gpDev->blue_led_cdev->blink_delay_on))
+		greenLed = TRUE;
 
-	if (gpDev->red_led_cdev && gpDev->red_led_cdev->blink_delay_on)
-		redLed = TRUE;
-
-	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->blink_delay_on)
-		blueLed = TRUE;
-
-	if ((blueLed == FALSE) && (redLed == FALSE)) {
+	if ((greenLed == FALSE) && (redLed == FALSE)) {
 		pLED->eState = LED_STATE_OFF;
 		pLED->eColor = LED_COLOR_GREEN;
 	} else {
 		pLED->eState = LED_STATE_ON;
-		if (blueLed && redLed)
+		if (greenLed && redLed)
 			pLED->eColor = LED_COLOR_YELLOW;
 		else if (redLed)
 			pLED->eColor = LED_COLOR_RED;
@@ -315,15 +307,16 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
 	int redLed = 0;
-	int blueLed = 0;
-	unsigned long delay = 0;
+	int greenLed = 0;
 
+	// On Bellatrix the KAKA LED consists of a green and a red LED
+        // The blue_led_cdev actually controls a green LED
 	if (pLED->eState == LED_STATE_ON) {
 		if (pLED->eColor == LED_COLOR_YELLOW) {
 			redLed = 1;
-			blueLed = 1;
+			greenLed = 1;
 		} else if (pLED->eColor == LED_COLOR_GREEN) {
-			blueLed = 1;
+			greenLed = 1;
 		} else if (pLED->eColor == LED_COLOR_RED) {
 			redLed = 1;
 		}
@@ -334,7 +327,7 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	}
 
 	if (gpDev->blue_led_cdev) {
-		led_set_brightness(gpDev->blue_led_cdev, blueLed ? LED_FULL : LED_OFF);
+		led_set_brightness(gpDev->blue_led_cdev, greenLed ? LED_FULL : LED_OFF);
 	}
 
 	return ERROR_SUCCESS;
