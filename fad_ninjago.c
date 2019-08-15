@@ -74,11 +74,11 @@ int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
 	int retval = -1;
+
+#ifdef CONFIG_OF
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
-
-#ifdef CONFIG_OF
 	struct device *dev = &gpDev->pLinuxDevice->dev;
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 #endif
@@ -518,9 +518,8 @@ BOOL getGPSEnable(BOOL * on)
 
 int suspend(PFAD_HW_INDEP_INFO gpDev)
 {
-	int res = 0;
-
 #ifdef CONFIG_OF
+	int res = 0;
 	pr_debug("Disbling motor regulator...\n");
 	res = SetMotorSleepRegulator(gpDev, false);
 	if (res)
@@ -579,9 +578,9 @@ int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend)
 
 int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-	int res;
-	static int enabled = false;
+	int res = 0;
 #ifdef CONFIG_OF
+	static int enabled = false;
 	if(on){
 		if (! enabled){
 			res = regulator_enable(gpDev->reg_motor_sleep);
