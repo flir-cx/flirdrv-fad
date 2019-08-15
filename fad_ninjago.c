@@ -205,6 +205,7 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
+#ifdef CONFIG_OF
 	BOOL redLed = FALSE;
 	BOOL blueLed = FALSE;
 
@@ -224,12 +225,13 @@ DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	} else {
 		pLED->eState = LED_STATE_ON;
 	}
-
+#endif
 	return ERROR_SUCCESS;
 }
 
 DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
+#ifdef CONFIG_OF
 	BOOL redLed = FALSE;
 	BOOL greenLed = FALSE;
 	unsigned long delay = 0;
@@ -272,7 +274,7 @@ DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 			led_set_brightness(gpDev->red_led_cdev, LED_OFF);
 		}
 	}
-
+#endif
 	return ERROR_SUCCESS;
 }
 
@@ -306,6 +308,7 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 {
+#ifdef CONFIG_OF
 	int redLed = 0;
 	int greenLed = 0;
 
@@ -329,7 +332,7 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	if (gpDev->blue_led_cdev) {
 		led_set_brightness(gpDev->blue_led_cdev, greenLed ? LED_FULL : LED_OFF);
 	}
-
+#endif
 	return ERROR_SUCCESS;
 }
 
