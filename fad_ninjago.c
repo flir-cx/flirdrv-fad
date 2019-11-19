@@ -209,9 +209,14 @@ DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	BOOL redLed = FALSE;
 	BOOL blueLed = FALSE;
 
-	if (gpDev->red_led_cdev && gpDev->red_led_cdev->brightness)
+	if (!gpDev->red_led_cdev || !gpDev->blue_led_cdev) {
+		pLED->eState = LED_STATE_OFF;
+	 	return ERROR_SUCCESS;
+        }
+
+	if (gpDev->red_led_cdev->brightness)
 		redLed = TRUE;
-	if (gpDev->blue_led_cdev && gpDev->blue_led_cdev->brightness)
+	if (gpDev->blue_led_cdev->brightness)
 		blueLed = TRUE;
 
 	if (gpDev->red_led_cdev->blink_delay_on == 500 ||
