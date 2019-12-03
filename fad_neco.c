@@ -23,6 +23,7 @@
 #include <linux/i2c.h>
 #include <linux/errno.h>
 #include <linux/leds.h>
+#include <linux/irq.h>
 
 // Definitions
 
@@ -53,6 +54,9 @@ static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
 static void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium,
 				     UINT8 * pHigh);
 static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
+static irqreturn_t fadDigIN1IST(int irq, void *dev_id);
+int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
+void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
 
 // Code
 
@@ -558,4 +562,55 @@ void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
 	*pLow = 10;
 	*pMedium = 40;
 	*pHigh = 75;
+}
+
+
+irqreturn_t fadDigIN1IST(int irq, void *dev_id)
+{
+	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
+	static BOOL bWaitForNeg = FALSE;
+
+	ApplicationEvent(gpDev, FAD_DIGIN_EVENT);
+	if (bWaitForNeg) {
+		irq_set_irq_type(gpio_to_irq(DIGIN_1),
+				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
+		bWaitForNeg = FALSE;
+	} else {
+		irq_set_irq_type(gpio_to_irq(DIGIN_1),
+				 IRQF_TRIGGER_LOW | IRQF_ONESHOT);
+		bWaitForNeg = TRUE;
+	}
+
+	pr_err("flirdrv-fad: fadDigIN1IST\n");
+
+	return IRQ_HANDLED;
+}
+/** 
+ * InitDigitalIOIrq
+ * 
+ * Initialize digital io irq if system requires it
+ *
+ * @param gpDev 
+ * 
+ * @return retval
+ */
+int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
+{
+	int ret = 0;
+	if (gpDev->bHasDigitalIO) {
+		//system can not be roco...
+		/* if(system_is_roco()) {} else { */ 
+		ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
+				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", gpDev);
+	}
+	return ret;
+}
+
+void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
+{
+	if (gpDev->bHasLaser){
+		//system can not be roco...
+		/* if(system_is_roco()) {} else { */ 
+		free_irq(gpio_to_irq(DIGIN_1), gpDev);
+	}
 }

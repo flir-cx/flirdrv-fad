@@ -28,8 +28,6 @@
 
 // Internal function prototypes
 static irqreturn_t fadLaserIST(int irq, void *dev_id);
-static irqreturn_t fadDigIN1IST(int irq, void *dev_id);
-static void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event);
 
 // Code
 
@@ -78,38 +76,6 @@ void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 }
 
 
-/** 
- * InitDigitalIOIrq
- * 
- * Initialize digital io irq if system requires it
- *
- * @param gpDev 
- * 
- * @return retval
- */
-int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
-{
-	int ret = 0;
-	if (gpDev->bHasDigitalIO) {
-		if(system_is_roco()){
-		} else {
-			ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
-				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", gpDev);
-		}
-	}
-	return ret;
-}
-
-void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
-{
-	if (gpDev->bHasLaser){
-		if(system_is_roco()) {
-
-		} else {
-			free_irq(gpio_to_irq(DIGIN_1), gpDev);
-		}
-	}
-}
 
 void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event)
 {
@@ -117,26 +83,6 @@ void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event)
 	wake_up_interruptible(&gpDev->wq);
 }
 
-irqreturn_t fadDigIN1IST(int irq, void *dev_id)
-{
-	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
-	static BOOL bWaitForNeg = FALSE;
-
-	ApplicationEvent(gpDev, FAD_DIGIN_EVENT);
-	if (bWaitForNeg) {
-		irq_set_irq_type(gpio_to_irq(DIGIN_1),
-				 IRQF_TRIGGER_HIGH | IRQF_ONESHOT);
-		bWaitForNeg = FALSE;
-	} else {
-		irq_set_irq_type(gpio_to_irq(DIGIN_1),
-				 IRQF_TRIGGER_LOW | IRQF_ONESHOT);
-		bWaitForNeg = TRUE;
-	}
-
-	pr_err("flirdrv-fad: fadDigIN1IST\n");
-
-	return IRQ_HANDLED;
-}
 
 irqreturn_t fadLaserIST(int irq, void *dev_id)
 {

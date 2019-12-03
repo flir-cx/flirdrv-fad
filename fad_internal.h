@@ -151,10 +151,9 @@ typedef struct __FAD_HW_INDEP_INFO {
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
 int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev);
-int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
 void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev);
-void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
 irqreturn_t fadTriggerIST(int irq, void *dev_id);
+void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event);
 
 // Function prototypes - fad_io.c (Misc IO handling, both I2C and GPIO)
 int SetupMX51(PFAD_HW_INDEP_INFO gpDev);
