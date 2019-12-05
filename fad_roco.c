@@ -127,7 +127,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 
 	gpDev->hI2C2 = i2c_get_adapter(tmp);
 
-	pr_info("flirdrv-fad: I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
+	pr_debug("flirdrv-fad: I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 
 	/* Configure devices (bools) from DT */
@@ -354,12 +354,12 @@ BOOL getGPSEnable(BOOL * on)
 
 void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout)
 {
-	pr_info("flirdrv-fad: Watchdog init deprecated\n");
+	pr_debug("flirdrv-fad: Watchdog init deprecated\n");
 }
 
 BOOL WdogService(PFAD_HW_INDEP_INFO gpDev)
 {
-	pr_info("flirdrv-fad: WatchdogService deprecated\n");
+	pr_debug("flirdrv-fad: WatchdogService deprecated\n");
 	return TRUE;
 }
 
@@ -393,7 +393,7 @@ BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 
 void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
 {
-	pr_info("flirdrv-fad SetBuzzerFrequency not implemented\n");
+	pr_debug("flirdrv-fad SetBuzzerFrequency not implemented\n");
 }
 
 DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,

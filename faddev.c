@@ -55,8 +55,17 @@ static long FAD_IOControl(struct file *filep,
 static unsigned int FadPoll(struct file *filp, poll_table * pt);
 static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
 		       loff_t * f_pos);
-/* struct wakeup_source *get_suspend_wakup_source(void); */
+
+
+// gpDev is global, which is generally undesired, we can fix this
+// in fad_probe, platform_set_drvdata sets gpDev as the driverdata,
+// if we have the device, we can get the platform with to_platform_device
 static PFAD_HW_INDEP_INFO gpDev;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
+//Workaround to allow 3.14 kernel to work...
+struct platform_device* pdev;
+#endif
 
 static struct file_operations fad_fops = {
 	.owner = THIS_MODULE,
@@ -178,7 +187,7 @@ static ssize_t store(struct device *dev, struct device_attribute *attr, const ch
 		if ((len == 1) && (*buf == '1'))
 			gpDev->bSuspend = 0;
 		else
-			pr_info("App standby prepare fail %d %c\n", len, (len>0) ? *buf : ' ');
+			pr_err("App standby prepare fail %d %c\n", len, (len>0) ? *buf : ' ');
 		complete(&gpDev->standbyComplete);
 	} else
 		pr_debug("App resume\n");
@@ -323,7 +332,7 @@ enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
 /** Wake up camera after 1 minute in (timed) standby */
 enum alarmtimer_restart fad_standby_wakeup (struct alarm *alarm, ktime_t kt)
 {
-	pr_info("Standby wakeup\n");
+	pr_debug("Standby wakeup\n");
 
 	return ALARMTIMER_NORESTART;
 }
@@ -355,7 +364,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		// Wait for appcore
 		wait_for_completion_timeout(&gpDev->standbyComplete, msecs_to_jiffies(10000));
 		if (gpDev->bSuspend) {
-			pr_info("Application suspend failed\n");
+			pr_err("Application suspend failed\n");
 			return NOTIFY_BAD;
 		}
 		return NOTIFY_OK;
@@ -380,11 +389,28 @@ static int fad_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	pr_info("Probing FAD driver\n");
+	pr_debug("Probing FAD driver\n");
+
+	/* Allocate (and zero-initiate) our control structure. */
+	gpDev = (PFAD_HW_INDEP_INFO) devm_kzalloc(&pdev->dev, sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
+	if (! gpDev) {
+		ret = -ENOMEM;
+		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
+		goto exit;
+	}
+	gpDev->alarm = (struct alarm *) devm_kzalloc(&pdev->dev, sizeof(struct alarm), GFP_KERNEL);
+	if (! gpDev->alarm) {
+		ret = -ENOMEM;
+		pr_err("flirdrv-fad: Error allocating memory for gpDev->alarm, FAD_Init failed\n");
+		goto exit;
+	}
+
+	gpDev->pLinuxDevice = pdev;
+	platform_set_drvdata(pdev, gpDev);
 	ret = misc_register(&fad_miscdev);
 	if (ret) {
 		pr_err("Failed to register miscdev for FAD driver\n");
-		return ret;
+		goto exit;
 	}
 
 	// initialize this device instance
@@ -398,42 +424,89 @@ static int fad_probe(struct platform_device *pdev)
 	ret = cpu_initialize();
 	if (ret < 0){
 		pr_err("flirdrv-fad: Failed to initialize CPU\n");
-		return ret;
+		goto exit_cpuinitialize;
 	}
 
 	// Set up suspend handling
-	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
-	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_timed_standby);
-
-	if (gpDev->bHasTrigger)
-		device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_trigger_poll);
-
-	ret = sysfs_create_group(&gpDev->pLinuxDevice->dev.kobj, &faddev_sysfs_attr_grp);
+	ret = device_create_file(&pdev->dev, &dev_attr_fadsuspend);
 	if(ret){
 		pr_err("FADDEV Error creating sysfs grp control\n");
+		goto exit_createfile_fadsuspend;
+	}
+	ret = device_create_file(&pdev->dev, &dev_attr_timed_standby);
+	if(ret){
+		pr_err("FADDEV Error creating sysfs grp control\n");
+		goto exit_createfile_timedstandby;
+	}
+
+	if (gpDev->bHasTrigger) {
+		ret = device_create_file(&pdev->dev, &dev_attr_trigger_poll);
+		if(ret){
+			pr_err("FADDEV Error creating sysfs grp control\n");
+			goto exit_createfile_trigger_poll;
+		}
+	}
+	ret = sysfs_create_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
+	if(ret){
+		pr_err("FADDEV Error creating sysfs grp control\n");
+		goto exit_sysfs_create_group;
 	}
 
 #ifdef CONFIG_OF
-	device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_charge_state);
+	ret =device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_charge_state);
+	if(ret){
+		pr_err("FADDEV Error creating sysfs grp control\n");
+		goto exit_sysfs_createfile_chargestate;
+	}
 	gpDev->nb.notifier_call = fad_notify;
 	gpDev->nb.priority = 0;
-	register_pm_notifier(&gpDev->nb);
+	ret = register_pm_notifier(&gpDev->nb);
+	if(ret){
+		pr_err("FADDEV Error creating sysfs grp control\n");
+		goto exit_register_pm_notifier;
+	}
 #endif
 	init_completion(&gpDev->standbyComplete);
 
+	return ret;
+
+#ifdef CONFIG_OF
+	unregister_pm_notifier(&gpDev->nb);
+exit_register_pm_notifier:
+	device_remove_file(&pdev->dev, &dev_attr_charge_state);
+exit_sysfs_createfile_chargestate:
+#endif
+	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
+exit_sysfs_create_group:
+	if(gpDev->bHasTrigger)
+		device_remove_file(&pdev->dev, &dev_attr_trigger_poll);
+exit_createfile_trigger_poll:
+	device_remove_file(&pdev->dev, &dev_attr_timed_standby);
+exit_createfile_timedstandby:
+	device_remove_file(&pdev->dev, &dev_attr_fadsuspend);
+exit_createfile_fadsuspend:
+	cpu_deinitialize();
+exit_cpuinitialize:
+	misc_deregister(&fad_miscdev);
+exit:
 	return ret;
 }
 
 static int fad_remove(struct platform_device *pdev)
 {
-	pr_info("Removing FAD driver\n");
+	pr_debug("Removing FAD driver\n");
 #ifdef CONFIG_OF
 	unregister_pm_notifier(&gpDev->nb);
+	device_remove_file(&pdev->dev, &dev_attr_charge_state);
 #endif
-	device_remove_file(&gpDev->pLinuxDevice->dev, &dev_attr_fadsuspend);
-	misc_deregister(&fad_miscdev);
+	device_remove_file(&pdev->dev, &dev_attr_fadsuspend);
+	device_remove_file(&pdev->dev, &dev_attr_timed_standby);
+	if(gpDev->bHasTrigger)
+		device_remove_file(&pdev->dev, &dev_attr_trigger_poll);
+	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 	cpu_deinitialize();
-
+	misc_deregister(&fad_miscdev);
+//	kfree(gpDev);
 	return 0;
 }
 
@@ -481,48 +554,19 @@ static struct platform_driver fad_driver = {
  */
 static int __init FAD_Init(void)
 {
-	int retval = 0;
+	int retval;
 
-	pr_info("FAD_Init\n");
-	// Allocate (and zero-initiate) our control structure.
-	gpDev = (PFAD_HW_INDEP_INFO) kzalloc(sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
-	if (! gpDev) {
-		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
-		goto EXIT_OUT;
-	}
-
-	gpDev->pLinuxDevice = platform_device_alloc("fad", 1);
-	if (gpDev->pLinuxDevice == NULL) {
-		pr_err("flirdrv-fad: Error adding allocating device\n");
-		goto EXIT_OUT_PLATFORMALLOC;
-	}
-
-	retval = platform_device_add(gpDev->pLinuxDevice);
-	if(retval) {
-		pr_err("flirdrv-fad: Error adding platform device\n");
-		goto EXIT_OUT_PLATFORMADD;
-	}
-
+	pr_debug("FAD_Init\n");
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
+	pdev = platform_device_alloc("fad", 1);
+	platform_device_add(pdev);
+#endif
 	retval = platform_driver_register(&fad_driver);
-        if (retval < 0) {
-		goto EXIT_OUT_DRIVERADD;
+        if (retval) {
 		pr_err("flirdrv-fad: Error adding platform driver\n");
-        }
-
-        gpDev->alarm = (struct alarm *) kzalloc(sizeof(struct alarm), GFP_KERNEL);
+	}
 
 	return retval;
-
-
-EXIT_OUT_DRIVERADD:
-	platform_device_unregister(gpDev->pLinuxDevice);
-EXIT_OUT_PLATFORMADD:
-	platform_device_put(gpDev->pLinuxDevice);
-EXIT_OUT_PLATFORMALLOC:
-	kfree(gpDev);
-EXIT_OUT:
-	return retval;
-
 }
 
 /** 
@@ -533,15 +577,12 @@ EXIT_OUT:
  */
 static void __exit FAD_Deinit(void)
 {
-	pr_info("FAD_Deinit\n");
-
+	pr_debug("FAD_Deinit\n");
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
+	platform_device_del(pdev);
+#endif
 	platform_driver_unregister(&fad_driver);
-	platform_device_unregister(gpDev->pLinuxDevice);
-	kfree(gpDev);
-	gpDev = NULL;
 }
-
-
 
 /**
  * DOIOControl
@@ -910,3 +951,4 @@ module_exit(FAD_Deinit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("FLIR Application Driver");
 MODULE_AUTHOR("Peter Fitger, FLIR Systems AB");
+MODULE_AUTHOR("Bo Svangård, FLIR Systems AB");

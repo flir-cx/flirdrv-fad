@@ -57,7 +57,7 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 	if(ret){
 		pr_err("flridrv-fad: Failed to register interrupt for laser...\n");
 	} else{
-		pr_info("flirdrv-fad: Registered interrupt %i for laser\n", gpio_to_irq(pin));
+		pr_debug("flirdrv-fad: Registered interrupt %i for laser\n", gpio_to_irq(pin));
 	}
 	return ret;
 }

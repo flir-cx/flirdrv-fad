@@ -182,7 +182,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 					IRQF_TRIGGER_FALLING, "TriggerGPIO", gpDev))
 				pr_err("flridrv-fad: Failed to register interrupt for trigger...\n");
 			else
-				pr_info("flirdrv-fad: Registered interrupt %i for trigger\n", gpio_to_irq(pin));
+				pr_debug("flirdrv-fad: Registered interrupt %i for trigger\n", gpio_to_irq(pin));
 		}
 	}
 

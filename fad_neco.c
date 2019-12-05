@@ -136,7 +136,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	}
 	up_read(&leds_list_lock);
 
-	pr_info("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
+	pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
 
 	//Set up Laser IRQ
@@ -144,7 +144,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
 	} else {
-		pr_info("Successfully requested Laser IRQ\n");
+		pr_debug("Successfully requested Laser IRQ\n");
 	}
 
 	// Set up Digital I/O IRQ
@@ -152,7 +152,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request DIGIN_1 IRQ\n");
 	} else {
-	pr_info("Successfully requested DIGIN_1 IRQ\n");
+	pr_debug("Successfully requested DIGIN_1 IRQ\n");
 	}
 
 
