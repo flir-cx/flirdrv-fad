@@ -55,7 +55,7 @@ static long FAD_IOControl(struct file *filep,
 static unsigned int FadPoll(struct file *filp, poll_table * pt);
 static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
 		       loff_t * f_pos);
-struct wakeup_source *get_suspend_wakup_source(void);
+/* struct wakeup_source *get_suspend_wakup_source(void); */
 static PFAD_HW_INDEP_INFO gpDev;
 
 static struct file_operations fad_fops = {
@@ -71,6 +71,19 @@ static struct miscdevice fad_miscdev = {
 	.name  = "fad0",
 	.fops  = &fad_fops
 };
+
+
+#if KERNEL_VERSION(4,0,0) > LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
+//get_suspend_wakup_source implemented in evander/lennox kernel
+struct wakeup_source *get_suspend_wakup_source(void);
+#else
+void *get_suspend_wakup_source(void)
+{
+	return NULL;
+}
+#endif
+
+
 
 // Code
 
@@ -263,16 +276,16 @@ static struct attribute_group faddev_sysfs_attr_grp = {
  */
 int get_wake_reason(void)
 {
-	struct wakeup_source *ws = NULL;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
+	struct wakeup_source *ws;
 	ws = get_suspend_wakup_source();
-#endif
 
 	if(timed_standby)
 		return ON_OFF_BUTTON_WAKE;
 
-	if(!ws)
-		goto err_wake;
+	if(!ws) {
+		pr_err("fad: No suspend wakeup source");
+		return UNKNOWN_WAKE;
+	}
 
 	if(strstr(ws->name,"onkey"))
 		return ON_OFF_BUTTON_WAKE;
@@ -281,12 +294,11 @@ int get_wake_reason(void)
 		return USB_CABLE_WAKE;
 
 	if(strstr(ws->name,"rtc") && !timed_standby) {
-		pr_err("Standby shutdown\n");
+		pr_err("fad: Standby shutdown\n");
 		orderly_poweroff(1);
 		return UNKNOWN_WAKE;
 	}
 
-err_wake:
 	pr_err("Unknown suspend wake reason");
 	return UNKNOWN_WAKE;
 }
