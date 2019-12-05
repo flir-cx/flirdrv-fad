@@ -598,8 +598,6 @@ int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	int ret = 0;
 	if (gpDev->bHasDigitalIO) {
-		//system can not be roco...
-		/* if(system_is_roco()) {} else { */ 
 		ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
 				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", gpDev);
 	}
@@ -609,8 +607,6 @@ int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	if (gpDev->bHasLaser){
-		//system can not be roco...
-		/* if(system_is_roco()) {} else { */ 
 		free_irq(gpio_to_irq(DIGIN_1), gpDev);
 	}
 }

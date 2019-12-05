@@ -104,22 +104,17 @@ static int cpu_initialize(void)
 		if (of_machine_is_compatible("fsl,imx6dl-ec501"))
 			gpDev->bHasKAKALed = TRUE;
 		retval = SetupMX6Platform(gpDev);
-	}
-	else
+	} else if (of_machine_is_compatible("fsl,imx6q")) {
+		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
+		retval = SetupMX6Q(gpDev);
+	} else
 #endif
 	if (cpu_is_imx6s()){
 		gpDev->bHasDigitalIO = TRUE;
 		gpDev->bHasKAKALed = TRUE;
 		retval = SetupMX6S(gpDev);
-	} else if (cpu_is_imx6q()){
-#ifdef CONFIG_OF
-		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
-		retval = SetupMX6Q(gpDev);
-#else
-		pr_err("flirdrv-fad: Missing devicetree configuration\n");
-#endif
-	} else{
-		pr_info("Unknown System CPU\n");
+	} else {
+		pr_err("Unknown System CPU\n");
 		retval = -EUNKNOWNCPU;
 	}
 	return retval;
@@ -135,17 +130,15 @@ static void cpu_deinitialize(void)
 	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501"))
 		InvSetupMX6Platform(gpDev);
-	else
+	else if (of_machine_is_compatible("fsl,imx6q")) {
+ 		of_node_put(gpDev->node); 
+ 		InvSetupMX6Q(gpDev);
+	} else
 #endif
 	if (cpu_is_imx6s()){
 		InvSetupMX6S(gpDev);
-	} else if (cpu_is_imx6q()){
-#ifdef CONFIG_OF
-		of_node_put(gpDev->node);
-		InvSetupMX6Q(gpDev);
-#endif
-	} else{
-		pr_info("Unknown System CPU\n");
+	} else {
+		pr_err("Unknown System CPU\n");
 	}
 }
 
