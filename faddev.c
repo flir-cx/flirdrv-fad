@@ -48,6 +48,7 @@ module_param(power_state, int, 0);
 MODULE_PARM_DESC(power_state, "Camera charge state: run=2,charge=3");
 static	int	timed_standby;
 module_param(timed_standby, int, 0);
+MODULE_PARM_DESC(timed_standby, "If set to 1, Wake up camera after 1 minute in suspend (instead of 6 hours)");
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep,
