@@ -36,6 +36,7 @@
 #include <asm/system_info.h>
 #else
 #include <asm/system.h>
+int cpu_is_imx6dl();
 #endif
 #define EUNKNOWNCPU 3
 
