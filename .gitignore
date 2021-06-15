@@ -3,5 +3,6 @@
 *.ko
 .tmp_versions
 fad.mod.c
+fad.mod
 Module.symvers
 modules.order
