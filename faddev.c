@@ -84,10 +84,13 @@ static struct miscdevice fad_miscdev = {
 };
 
 
-#if KERNEL_VERSION(4,0,0) > LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
-//get_suspend_wakup_source implemented in evander/lennox kernel
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0) && LINUX_VERSION_CODE <  KERNEL_VERSION(3,15,0)
+// get_suspend_wakup_source is implemented in evander/lennox (3.14.x) kernel
 struct wakeup_source *get_suspend_wakup_source(void);
+#warning "we use (3.14.x) kernel get_suspend_wakeup_source"
+
 #else
+#warning "local dummy wakeup compatibility due to kernel version check - do not expect 6 hour standby->off to work"
 void *get_suspend_wakup_source(void)
 {
 	return NULL;
