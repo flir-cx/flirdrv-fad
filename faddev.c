@@ -26,7 +26,7 @@
 #include <linux/reboot.h>
 #include <linux/backlight.h>
 #include <../drivers/base/power/power.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
+#if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 #include <asm/system_info.h>
 #else
 #include <asm/system.h>
@@ -56,7 +56,7 @@ static ssize_t FadRead(struct file *filp, char __user *buf, size_t count,
 // if we have the device, we can get the platform with to_platform_device
 static PFAD_HW_INDEP_INFO gpDev;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 //Workaround to allow 3.14 kernel to work...
 struct platform_device *pdev;
 #endif
@@ -75,7 +75,7 @@ static struct miscdevice fad_miscdev = {
 	.fops = &fad_fops
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0) && LINUX_VERSION_CODE <  KERNEL_VERSION(3, 15, 0)
+#if KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE  && KERNEL_VERSION(3, 15, 0) > LINUX_VERSION_CODE
 // get_suspend_wakup_source is implemented in evander/lennox (3.14.x) kernel
 struct wakeup_source *get_suspend_wakup_source(void);
 #warning "we use (3.14.x) kernel get_suspend_wakeup_source"
@@ -570,7 +570,7 @@ static int __init FAD_Init(void)
 	int retval;
 
 	pr_debug("FAD_Init\n");
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	pdev = platform_device_alloc("fad", 1);
 	platform_device_add(pdev);
 #endif
@@ -591,7 +591,7 @@ static int __init FAD_Init(void)
 static void __exit FAD_Deinit(void)
 {
 	pr_debug("FAD_Deinit\n");
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	platform_device_del(pdev);
 #endif
 	platform_driver_unregister(&fad_driver);
