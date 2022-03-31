@@ -61,7 +61,7 @@ static PFAD_HW_INDEP_INFO gpDev;
 struct platform_device *pdev;
 #endif
 
-static struct file_operations fad_fops = {
+static const struct file_operations fad_fops = {
 	.owner = THIS_MODULE,
 //              .ioctl = FAD_IOControl,
 	.unlocked_ioctl = FAD_IOControl,
@@ -111,14 +111,14 @@ static int cpu_initialize(void)
 		retval = SetupMX6Q(gpDev);
 	} else
 #endif
-	if (cpu_is_imx6s()) {
-		gpDev->bHasDigitalIO = TRUE;
-		gpDev->bHasKAKALed = TRUE;
-		retval = SetupMX6S(gpDev);
-	} else {
-		pr_err("Unknown System CPU\n");
-		retval = -EUNKNOWNCPU;
-	}
+		if (cpu_is_imx6s()) {
+			gpDev->bHasDigitalIO = TRUE;
+			gpDev->bHasKAKALed = TRUE;
+			retval = SetupMX6S(gpDev);
+		} else {
+			pr_err("Unknown System CPU\n");
+			retval = -EUNKNOWNCPU;
+		}
 	return retval;
 }
 
@@ -130,18 +130,18 @@ static void cpu_deinitialize(void)
 {
 #ifdef CONFIG_OF
 	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
-	    of_machine_is_compatible("fsl,imx6dl-ec501"))
+	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
 		InvSetupMX6Platform(gpDev);
-	else if (of_machine_is_compatible("fsl,imx6q")) {
+	} else if (of_machine_is_compatible("fsl,imx6q")) {
 		of_node_put(gpDev->node);
 		InvSetupMX6Q(gpDev);
 	} else
 #endif
-	if (cpu_is_imx6s()) {
-		InvSetupMX6S(gpDev);
-	} else {
-		pr_err("Unknown System CPU\n");
-	}
+		if (cpu_is_imx6s()) {
+			InvSetupMX6S(gpDev);
+		} else {
+			pr_err("Unknown System CPU\n");
+		}
 }
 
 /**
