@@ -1,20 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /***********************************************************************
-*
-* Project: Balthazar
-* $Date$
-* $Author$
-*
-* $Id$
-*
-* Description of file:
-*    FLIR Application Driver (FAD) main file.
-*
-* Last check-in changelist:
-* $Change$
-*
-*
-*  FADDEV Copyright : FLIR Systems AB
-***********************************************************************/
+ *
+ * Project: Balthazar
+ *
+ * Description of file:
+ *    FLIR Application Driver (FAD) main file.
+ *
+ *
+ *  FADDEV Copyright : FLIR Systems AB
+ ***********************************************************************/
 
 #include "flir_kernel_os.h"
 #include "faddev.h"

@@ -1,20 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /***********************************************************************
-*
-* Project: Balthazar
-* $Date$
-* $Author$
-*
-* $Id$
-*
-* Description of file:
-*    Common definitions for FLIR Application Driver (FAD)
-*
-* Last check-in changelist:
-* $Change$
-*
-*
-*  FADDEV Copyright : FLIR Systems AB
-***********************************************************************/
+ *
+ * Project: Balthazar
+ *
+ * Description of file:
+ *    Common definitions for FLIR Application Driver (FAD)
+ *
+ *  FADDEV Copyright : FLIR Systems AB
+ ***********************************************************************/
 
 #ifndef FAD_INTERNAL_H
 #define FAD_INTERNAL_H
