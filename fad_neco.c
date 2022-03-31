@@ -33,7 +33,8 @@
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus);
+static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
+			     PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
 			   PFADDEVIOCTLLASER pLaserStatus);
@@ -66,7 +67,6 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
-
 
 	gpDev->pGetKAKALedState = getKAKALedState;
 	gpDev->pSetKAKALedState = setKAKALedState;
@@ -138,7 +138,6 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 
 	pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
-
 	//Set up Laser IRQ
 	retval = InitLaserIrq(gpDev);
 	if (retval) {
@@ -152,10 +151,8 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	if (retval) {
 		pr_err("flirdrv-fad: Failed to request DIGIN_1 IRQ\n");
 	} else {
-	pr_debug("Successfully requested DIGIN_1 IRQ\n");
+		pr_debug("Successfully requested DIGIN_1 IRQ\n");
 	}
-
-
 
 	return 0;
 }
@@ -564,7 +561,6 @@ void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
 	*pHigh = 75;
 }
 
-
 irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
@@ -585,6 +581,7 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+
 /** 
  * InitDigitalIOIrq
  * 
@@ -599,14 +596,15 @@ int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 	int ret = 0;
 	if (gpDev->bHasDigitalIO) {
 		ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
-				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1", gpDev);
+				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1",
+				  gpDev);
 	}
 	return ret;
 }
 
 void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
-	if (gpDev->bHasLaser){
+	if (gpDev->bHasLaser) {
 		free_irq(gpio_to_irq(DIGIN_1), gpDev);
 	}
 }

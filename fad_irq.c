@@ -49,15 +49,17 @@ int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 #else
 	pin = LASER_ON;
 #endif
-	if(gpDev->bHasLaser){
+	if (gpDev->bHasLaser) {
 		ret = request_irq(gpio_to_irq(pin), fadLaserIST,
 				  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
 				  "LaserON", gpDev);
 	}
-	if(ret){
-		pr_err("flridrv-fad: Failed to register interrupt for laser...\n");
-	} else{
-		pr_debug("flirdrv-fad: Registered interrupt %i for laser\n", gpio_to_irq(pin));
+	if (ret) {
+		pr_err
+		    ("flridrv-fad: Failed to register interrupt for laser...\n");
+	} else {
+		pr_debug("flirdrv-fad: Registered interrupt %i for laser\n",
+			 gpio_to_irq(pin));
 	}
 	return ret;
 }
@@ -70,19 +72,16 @@ void FreeLaserIrq(PFAD_HW_INDEP_INFO gpDev)
 #else
 	pin = LASER_ON;
 #endif
-	if (gpDev->bHasLaser){
+	if (gpDev->bHasLaser) {
 		free_irq(gpio_to_irq(pin), gpDev);
 	}
 }
-
-
 
 void ApplicationEvent(PFAD_HW_INDEP_INFO gpDev, FAD_EVENT_E event)
 {
 	gpDev->eEvent = event;
 	wake_up_interruptible(&gpDev->wq);
 }
-
 
 irqreturn_t fadLaserIST(int irq, void *dev_id)
 {
@@ -96,13 +95,13 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 /* #endif */
 	ApplicationEvent(gpDev, FAD_LASER_EVENT);
 	/* if (bWaitForNeg) { */
-	/* 	irq_set_irq_type(gpio_to_irq(pin), */
-	/* 			 IRQF_TRIGGER_LOW | IRQF_ONESHOT); */
-	/* 	bWaitForNeg = FALSE; */
+	/*      irq_set_irq_type(gpio_to_irq(pin), */
+	/*                       IRQF_TRIGGER_LOW | IRQF_ONESHOT); */
+	/*      bWaitForNeg = FALSE; */
 	/* } else { */
-	/* 	irq_set_irq_type(gpio_to_irq(LASER_ON), */
-	/* 			 IRQF_TRIGGER_HIGH | IRQF_ONESHOT); */
-	/* 	bWaitForNeg = TRUE; */
+	/*      irq_set_irq_type(gpio_to_irq(LASER_ON), */
+	/*                       IRQF_TRIGGER_HIGH | IRQF_ONESHOT); */
+	/*      bWaitForNeg = TRUE; */
 	/* } */
 
 	return IRQ_HANDLED;

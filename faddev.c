@@ -40,16 +40,15 @@ int cpu_is_imx6dl();
 #endif
 #define EUNKNOWNCPU 3
 
-
-
 DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 
-static 	int	power_state = ON_STATE;
+static int power_state = ON_STATE;
 module_param(power_state, int, 0);
 MODULE_PARM_DESC(power_state, "Camera charge state: run=2,charge=3");
-static	int	timed_standby;
+static int timed_standby;
 module_param(timed_standby, int, 0);
-MODULE_PARM_DESC(timed_standby, "If set to 1, Wake up camera after 1 minute in suspend (instead of 6 hours)");
+MODULE_PARM_DESC(timed_standby,
+		 "If set to 1, Wake up camera after 1 minute in suspend (instead of 6 hours)");
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep,
@@ -58,7 +57,6 @@ static unsigned int FadPoll(struct file *filp, poll_table * pt);
 static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
 		       loff_t * f_pos);
 
-
 // gpDev is global, which is generally undesired, we can fix this
 // in fad_probe, platform_set_drvdata sets gpDev as the driverdata,
 // if we have the device, we can get the platform with to_platform_device
@@ -66,7 +64,7 @@ static PFAD_HW_INDEP_INFO gpDev;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
 //Workaround to allow 3.14 kernel to work...
-struct platform_device* pdev;
+struct platform_device *pdev;
 #endif
 
 static struct file_operations fad_fops = {
@@ -79,10 +77,9 @@ static struct file_operations fad_fops = {
 
 static struct miscdevice fad_miscdev = {
 	.minor = MISC_DYNAMIC_MINOR,
-	.name  = "fad0",
-	.fops  = &fad_fops
+	.name = "fad0",
+	.fops = &fad_fops
 };
-
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0) && LINUX_VERSION_CODE <  KERNEL_VERSION(3,15,0)
 // get_suspend_wakup_source is implemented in evander/lennox (3.14.x) kernel
@@ -96,8 +93,6 @@ void *get_suspend_wakup_source(void)
 	return NULL;
 }
 #endif
-
-
 
 // Code
 
@@ -113,8 +108,7 @@ static int cpu_initialize(void)
 	int retval;
 #ifdef CONFIG_OF
 	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
-	    of_machine_is_compatible("fsl,imx6dl-ec501"))
-	{
+	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
 		if (of_machine_is_compatible("fsl,imx6dl-ec501"))
 			gpDev->bHasKAKALed = TRUE;
 		retval = SetupMX6Platform(gpDev);
@@ -123,7 +117,7 @@ static int cpu_initialize(void)
 		retval = SetupMX6Q(gpDev);
 	} else
 #endif
-	if (cpu_is_imx6s()){
+	if (cpu_is_imx6s()) {
 		gpDev->bHasDigitalIO = TRUE;
 		gpDev->bHasKAKALed = TRUE;
 		retval = SetupMX6S(gpDev);
@@ -145,27 +139,26 @@ static void cpu_deinitialize(void)
 	    of_machine_is_compatible("fsl,imx6dl-ec501"))
 		InvSetupMX6Platform(gpDev);
 	else if (of_machine_is_compatible("fsl,imx6q")) {
- 		of_node_put(gpDev->node); 
- 		InvSetupMX6Q(gpDev);
+		of_node_put(gpDev->node);
+		InvSetupMX6Q(gpDev);
 	} else
 #endif
-	if (cpu_is_imx6s()){
+	if (cpu_is_imx6s()) {
 		InvSetupMX6S(gpDev);
 	} else {
 		pr_err("Unknown System CPU\n");
 	}
 }
 
-
 /**
  * Device attribute "fadsuspend" to sync with application during suspend/resume
  *
  */
 
-static ssize_t show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show(struct device *dev, struct device_attribute *attr,
+		    char *buf)
 {
-	switch(power_state)
-	{
+	switch (power_state) {
 	case SUSPEND_STATE:
 		strcpy(buf, "suspend");
 		break;
@@ -186,13 +179,15 @@ static ssize_t show(struct device *dev, struct device_attribute *attr, char *buf
 	return strlen(buf);
 }
 
-static ssize_t store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+static ssize_t store(struct device *dev, struct device_attribute *attr,
+		     const char *buf, size_t len)
 {
 	if (gpDev->bSuspend) {
 		if ((len == 1) && (*buf == '1'))
 			gpDev->bSuspend = 0;
 		else
-			pr_err("App standby prepare fail %d %c\n", len, (len>0) ? *buf : ' ');
+			pr_err("App standby prepare fail %d %c\n", len,
+			       (len > 0) ? *buf : ' ');
 		complete(&gpDev->standbyComplete);
 	} else
 		pr_debug("App resume\n");
@@ -200,13 +195,14 @@ static ssize_t store(struct device *dev, struct device_attribute *attr, const ch
 	return sizeof(char);
 }
 
-
-static ssize_t charge_state_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+static ssize_t charge_state_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t len)
 {
 
-	if(!strncmp(buf,"run",strlen("run")))
+	if (!strncmp(buf, "run", strlen("run")))
 		power_state = ON_STATE;
-	else if(!strncmp(buf,"charge",strlen("charge")))
+	else if (!strncmp(buf, "charge", strlen("charge")))
 		power_state = USB_CHARGE_STATE;
 	else
 		return -EINVAL;
@@ -215,9 +211,10 @@ static ssize_t charge_state_store(struct device *dev, struct device_attribute *a
 	return len;
 }
 
-static ssize_t show_timed(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_timed(struct device *dev, struct device_attribute *attr,
+			  char *buf)
 {
-	if(timed_standby)
+	if (timed_standby)
 		strcpy(buf, "on");
 	else
 		strcpy(buf, "off");
@@ -225,46 +222,54 @@ static ssize_t show_timed(struct device *dev, struct device_attribute *attr, cha
 	return strlen(buf);
 }
 
-static ssize_t timed_standby_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+static ssize_t timed_standby_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t len)
 {
-	if(!strncmp(buf,"1",1))
+	if (!strncmp(buf, "1", 1))
 		timed_standby = true;
-	else if(!strncmp(buf,"0",1))
+	else if (!strncmp(buf, "0", 1))
 		timed_standby = false;
 	else
 		return -EINVAL;
 	return len;
 }
 
-static ssize_t chargersuspend_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+static ssize_t chargersuspend_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t len)
 {
-	int ret=0;
-	if(gpDev->pSetChargerSuspend != NULL){
-		if(strncmp(buf, "1", 1) == 0){
+	int ret = 0;
+	if (gpDev->pSetChargerSuspend != NULL) {
+		if (strncmp(buf, "1", 1) == 0) {
 			gpDev->pSetChargerSuspend(gpDev, true);
-			ret=len;
-		} else 	if(strncmp(buf, "0", 1) == 0){
+			ret = len;
+		} else if (strncmp(buf, "0", 1) == 0) {
 			gpDev->pSetChargerSuspend(gpDev, false);
-			ret=len;
+			ret = len;
 		} else {
-			pr_err("chargersuspend unknown command... 1/0 accepted\n");
+			pr_err
+			    ("chargersuspend unknown command... 1/0 accepted\n");
 		}
 	}
 	return ret;
 }
 
-static ssize_t show_trig(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_trig(struct device *dev, struct device_attribute *attr,
+			 char *buf)
 {
 	strcpy(buf, "X");
 
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(timed_standby, S_IRUGO | S_IWUSR, show_timed, timed_standby_store);
+static DEVICE_ATTR(timed_standby, S_IRUGO | S_IWUSR, show_timed,
+		   timed_standby_store);
 static DEVICE_ATTR(charge_state, S_IRUGO | S_IWUSR, show, charge_state_store);
 static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
-static DEVICE_ATTR(chargersuspend, S_IRUGO | S_IWUSR, NULL, chargersuspend_store);
-static DEVICE_ATTR(trigger_poll, S_IRUGO , show_trig, NULL);
+static DEVICE_ATTR(chargersuspend, S_IRUGO | S_IWUSR, NULL,
+		   chargersuspend_store);
+static DEVICE_ATTR(trigger_poll, S_IRUGO, show_trig, NULL);
 
 static struct attribute *faddev_sysfs_attrs[] = {
 	&dev_attr_chargersuspend.attr,
@@ -276,7 +281,6 @@ static struct attribute_group faddev_sysfs_attr_grp = {
 	.attrs = faddev_sysfs_attrs,
 };
 
-
 /*
  * Get reason camera woke from standby
  *
@@ -286,21 +290,21 @@ int get_wake_reason(void)
 	struct wakeup_source *ws;
 	ws = get_suspend_wakup_source();
 
-	if(timed_standby)
+	if (timed_standby)
 		return ON_OFF_BUTTON_WAKE;
 
-	if(!ws) {
+	if (!ws) {
 		pr_err("fad: No suspend wakeup source");
 		return UNKNOWN_WAKE;
 	}
 
-	if(strstr(ws->name,"onkey"))
+	if (strstr(ws->name, "onkey"))
 		return ON_OFF_BUTTON_WAKE;
 
-	if(strstr(ws->name,"wake"))
+	if (strstr(ws->name, "wake"))
 		return USB_CABLE_WAKE;
 
-	if(strstr(ws->name,"rtc") && !timed_standby) {
+	if (strstr(ws->name, "rtc") && !timed_standby) {
 		pr_err("fad: Standby shutdown\n");
 		orderly_poweroff(1);
 		return UNKNOWN_WAKE;
@@ -310,8 +314,6 @@ int get_wake_reason(void)
 	return UNKNOWN_WAKE;
 }
 
-
-
 /**
  * Power notify callback for application sync during suspend/resume
  *
@@ -319,23 +321,22 @@ int get_wake_reason(void)
 
 #ifdef CONFIG_OF
 /** Switch off camera after 6 hours in standby */
-enum alarmtimer_restart fad_standby_timeout (struct alarm *alarm, ktime_t kt)
+enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
 	pr_err("Standby timeout\n");
 
 	// Switch of backlight as fast as possible (just activated in early resume)
 	if (gpDev->backlight) {
-		gpDev->backlight->props.power=4;
-		gpDev->backlight->props.brightness=0;
+		gpDev->backlight->props.power = 4;
+		gpDev->backlight->props.brightness = 0;
 		backlight_update_status(gpDev->backlight);
 	}
-
 	// Actual switch off will be done in get_wake_reason() when resume finished
 	return ALARMTIMER_NORESTART;
 }
 
 /** Wake up camera after 1 minute in (timed) standby */
-enum alarmtimer_restart fad_standby_wakeup (struct alarm *alarm, ktime_t kt)
+enum alarmtimer_restart fad_standby_wakeup(struct alarm *alarm, ktime_t kt)
 {
 	pr_debug("Standby wakeup\n");
 
@@ -353,21 +354,25 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		// Make appcore enter standby
 		power_state = SUSPEND_STATE;
 		gpDev->bSuspend = 1;
-		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
+		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL,
+			     "fadsuspend");
 
 		if (timed_standby) {
 			// Set a timer to wake us up in 1 minute
-			alarm_init(gpDev->alarm, ALARM_REALTIME, &fad_standby_wakeup);
+			alarm_init(gpDev->alarm, ALARM_REALTIME,
+				   &fad_standby_wakeup);
 			kt = ktime_set(60, 0);
 		} else {
 			// Set a timer to wake us up in 6 hours
-			alarm_init(gpDev->alarm, ALARM_REALTIME, &fad_standby_timeout);
+			alarm_init(gpDev->alarm, ALARM_REALTIME,
+				   &fad_standby_timeout);
 			kt = ktime_set(60 * gpDev->standbyMinutes, 0);
 		}
 		alarm_start_relative(gpDev->alarm, kt);
 
 		// Wait for appcore
-		wait_for_completion_timeout(&gpDev->standbyComplete, msecs_to_jiffies(10000));
+		wait_for_completion_timeout(&gpDev->standbyComplete,
+					    msecs_to_jiffies(10000));
 		if (gpDev->bSuspend) {
 			pr_err("Application suspend failed\n");
 			return NOTIFY_BAD;
@@ -376,14 +381,15 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 
 	case PM_POST_SUSPEND:
 		pr_debug("fad_notify: POST_SUSPEND\n");
-		if(get_wake_reason() == USB_CABLE_WAKE)
+		if (get_wake_reason() == USB_CABLE_WAKE)
 			power_state = USB_CHARGE_STATE;
 		else
 			power_state = ON_STATE;
 
 		gpDev->bSuspend = 0;
 		alarm_cancel(gpDev->alarm);
-		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
+		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL,
+			     "fadsuspend");
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -397,16 +403,23 @@ static int fad_probe(struct platform_device *pdev)
 	pr_debug("Probing FAD driver\n");
 
 	/* Allocate (and zero-initiate) our control structure. */
-	gpDev = (PFAD_HW_INDEP_INFO) devm_kzalloc(&pdev->dev, sizeof(FAD_HW_INDEP_INFO), GFP_KERNEL);
-	if (! gpDev) {
+	gpDev =
+	    (PFAD_HW_INDEP_INFO) devm_kzalloc(&pdev->dev,
+					      sizeof(FAD_HW_INDEP_INFO),
+					      GFP_KERNEL);
+	if (!gpDev) {
 		ret = -ENOMEM;
-		pr_err("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
+		pr_err
+		    ("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
 		goto exit;
 	}
-	gpDev->alarm = (struct alarm *) devm_kzalloc(&pdev->dev, sizeof(struct alarm), GFP_KERNEL);
-	if (! gpDev->alarm) {
+	gpDev->alarm =
+	    (struct alarm *)devm_kzalloc(&pdev->dev, sizeof(struct alarm),
+					 GFP_KERNEL);
+	if (!gpDev->alarm) {
 		ret = -ENOMEM;
-		pr_err("flirdrv-fad: Error allocating memory for gpDev->alarm, FAD_Init failed\n");
+		pr_err
+		    ("flirdrv-fad: Error allocating memory for gpDev->alarm, FAD_Init failed\n");
 		goto exit;
 	}
 
@@ -417,7 +430,6 @@ static int fad_probe(struct platform_device *pdev)
 		pr_err("Failed to register miscdev for FAD driver\n");
 		goto exit;
 	}
-
 	// initialize this device instance
 	sema_init(&gpDev->semDevice, 1);
 	sema_init(&gpDev->semIOport, 1);
@@ -427,46 +439,46 @@ static int fad_probe(struct platform_device *pdev)
 
 	// Set up CPU specific stuff
 	ret = cpu_initialize();
-	if (ret < 0){
+	if (ret < 0) {
 		pr_err("flirdrv-fad: Failed to initialize CPU\n");
 		goto exit_cpuinitialize;
 	}
-
 	// Set up suspend handling
 	ret = device_create_file(&pdev->dev, &dev_attr_fadsuspend);
-	if(ret){
+	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_createfile_fadsuspend;
 	}
 	ret = device_create_file(&pdev->dev, &dev_attr_timed_standby);
-	if(ret){
+	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_createfile_timedstandby;
 	}
 
 	if (gpDev->bHasTrigger) {
 		ret = device_create_file(&pdev->dev, &dev_attr_trigger_poll);
-		if(ret){
+		if (ret) {
 			pr_err("FADDEV Error creating sysfs grp control\n");
 			goto exit_createfile_trigger_poll;
 		}
 	}
 	ret = sysfs_create_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
-	if(ret){
+	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_sysfs_create_group;
 	}
-
 #ifdef CONFIG_OF
-	ret =device_create_file(&gpDev->pLinuxDevice->dev, &dev_attr_charge_state);
-	if(ret){
+	ret =
+	    device_create_file(&gpDev->pLinuxDevice->dev,
+			       &dev_attr_charge_state);
+	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_sysfs_createfile_chargestate;
 	}
 	gpDev->nb.notifier_call = fad_notify;
 	gpDev->nb.priority = 0;
 	ret = register_pm_notifier(&gpDev->nb);
-	if(ret){
+	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_register_pm_notifier;
 	}
@@ -483,7 +495,7 @@ exit_sysfs_createfile_chargestate:
 #endif
 	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 exit_sysfs_create_group:
-	if(gpDev->bHasTrigger)
+	if (gpDev->bHasTrigger)
 		device_remove_file(&pdev->dev, &dev_attr_trigger_poll);
 exit_createfile_trigger_poll:
 	device_remove_file(&pdev->dev, &dev_attr_timed_standby);
@@ -506,12 +518,12 @@ static int fad_remove(struct platform_device *pdev)
 #endif
 	device_remove_file(&pdev->dev, &dev_attr_fadsuspend);
 	device_remove_file(&pdev->dev, &dev_attr_timed_standby);
-	if(gpDev->bHasTrigger)
+	if (gpDev->bHasTrigger)
 		device_remove_file(&pdev->dev, &dev_attr_trigger_poll);
 	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 	cpu_deinitialize();
 	misc_deregister(&fad_miscdev);
-//	kfree(gpDev);
+//      kfree(gpDev);
 	return 0;
 }
 
@@ -539,15 +551,15 @@ static void fad_shutdown(struct platform_device *pdev)
 }
 
 static struct platform_driver fad_driver = {
-	.probe      = fad_probe,
-	.remove     = fad_remove,
-	.suspend    = fad_suspend,
-	.resume     = fad_resume,
-	.shutdown   = fad_shutdown,
-	.driver     = {
-		.name   = "fad",
-		.owner  = THIS_MODULE,
-	},
+	.probe = fad_probe,
+	.remove = fad_remove,
+	.suspend = fad_suspend,
+	.resume = fad_resume,
+	.shutdown = fad_shutdown,
+	.driver = {
+		   .name = "fad",
+		   .owner = THIS_MODULE,
+		    },
 };
 
 /**
@@ -567,7 +579,7 @@ static int __init FAD_Init(void)
 	platform_device_add(pdev);
 #endif
 	retval = platform_driver_register(&fad_driver);
-        if (retval) {
+	if (retval) {
 		pr_err("flirdrv-fad: Error adding platform driver\n");
 	}
 
@@ -600,7 +612,7 @@ static void __exit FAD_Deinit(void)
  * @return 
  */
 static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
-			 DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
+		       DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
 	int retval = ERROR_INVALID_PARAMETER;
 //    static ULONG ulWdogTime = 5000;    // 5 seconds
@@ -612,7 +624,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->bLaserEnable = ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
+			gpDev->bLaserEnable =
+			    ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
 			gpDev->pSetLaserStatus(gpDev, gpDev->bLaserEnable);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
@@ -634,7 +647,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		if (!gpDev->bHasLaser || !gpDev->pSetLaserMode) {
 			retval = ERROR_NOT_SUPPORTED;
 		} else {
-			gpDev->pSetLaserMode(gpDev, (PFADDEVIOCTLLASERMODE)pBuf);
+			gpDev->pSetLaserMode(gpDev,
+					     (PFADDEVIOCTLLASERMODE) pBuf);
 			retval = ERROR_SUCCESS;
 		}
 		break;
@@ -671,13 +685,13 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		}
 		break;
 
-
 	case IOCTL_FAD_GET_DIG_IO_STATUS:
 		if (!gpDev->bHasDigitalIO)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetDigitalStatus(gpDev, (PFADDEVIOCTLDIGIO) pBuf);
+			gpDev->pGetDigitalStatus(gpDev,
+						 (PFADDEVIOCTLDIGIO) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
@@ -692,7 +706,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
-                break;
+		break;
 
 	case IOCTL_FAD_SET_LED:
 		if (!gpDev->bHasKAKALed)
@@ -703,7 +717,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
-                break;
+		break;
 
 	case IOCTL_FAD_GET_KAKA_LED:
 		if (!gpDev->bHasKAKALed)
@@ -732,8 +746,9 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pSetGPSEnable(((PFADDEVIOCTLGPS) pBuf)->
-					     bGPSEnabled);
+			gpDev->
+			    pSetGPSEnable(((PFADDEVIOCTLGPS)
+					   pBuf)->bGPSEnabled);
 			bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
@@ -745,8 +760,10 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetGPSEnable(&(((PFADDEVIOCTLGPS) pBuf)->
-					       bGPSEnabled));
+			gpDev->
+			    pGetGPSEnable(&
+					  (((PFADDEVIOCTLGPS)
+					    pBuf)->bGPSEnabled));
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
@@ -794,8 +811,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    gpDev->
-				pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
+			    gpDev->pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
+						       pBuf);
 		}
 		break;
 
@@ -804,8 +821,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    gpDev->
-			    pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
+			    gpDev->pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
+						       pBuf);
 		}
 		break;
 
@@ -886,15 +903,16 @@ static long FAD_IOControl(struct file *filep,
 			 _IOC_SIZE(cmd));
 		retval = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("flirdrv-fad: FAD Copy from user failed: %i\n", retval);
+			pr_err("flirdrv-fad: FAD Copy from user failed: %i\n",
+			       retval);
 	}
 
 	if (retval == ERROR_SUCCESS) {
 		pr_debug("flirdrv-fad: FAD Ioctl %X\n", cmd);
 		retval = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
-			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd, retval,
-			       _IOC_NR(cmd));
+			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd,
+			       retval, _IOC_NR(cmd));
 	}
 
 	if ((retval == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ)) {
@@ -902,12 +920,14 @@ static long FAD_IOControl(struct file *filep,
 			 _IOC_SIZE(cmd));
 		retval = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("flirdrv-fad: FAD Copy to user failed: %i\n", retval);
+			pr_err("flirdrv-fad: FAD Copy to user failed: %i\n",
+			       retval);
 	}
 	kfree(tmp);
 
 	return retval;
 }
+
 /** 
  * FADPoll
  * 
@@ -922,6 +942,7 @@ static unsigned int FadPoll(struct file *filp, poll_table * pt)
 
 	return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
+
 /** 
  * FadRead
  * 
@@ -947,8 +968,6 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	gpDev->eEvent = FAD_NO_EVENT;
 	return 1;
 }
-
-
 
 module_init(FAD_Init);
 module_exit(FAD_Deinit);

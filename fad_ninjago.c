@@ -31,7 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 
-extern struct input_dev* ca111_get_input_dev(void);
+extern struct input_dev *ca111_get_input_dev(void);
 extern int ca111_get_laserstatus(void);
 
 // Definitions
@@ -45,7 +45,8 @@ static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus);
+static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
+			     PFADDEVIOCTLDIGIO pDigioStatus);
 
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
 static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
@@ -63,7 +64,7 @@ void startmeasure_hq_single(void);
 void startmeasure_lq_continous(void);
 void startmeasure_lq_single(void);
 static BOOL setGPSEnable(BOOL on);
-static BOOL getGPSEnable(BOOL *on);
+static BOOL getGPSEnable(BOOL * on);
 
 static int suspend(PFAD_HW_INDEP_INFO gpDev);
 static int resume(PFAD_HW_INDEP_INFO gpDev);
@@ -106,47 +107,52 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	//Better to wrap this in separate function... (int -> bool etc...)
 	of_property_read_u32_index(gpDev->node,
 				   "hasLaser", 0, &gpDev->bHasLaser);
-	of_property_read_u32_index(gpDev->node,
-				   "hasGPS", 0, &gpDev->bHasGPS);
-	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
-	of_property_read_u32_index(gpDev->node, "hasTrigger", 0, &gpDev->bHasTrigger);
+	of_property_read_u32_index(gpDev->node, "hasGPS", 0, &gpDev->bHasGPS);
+	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0,
+				   &gpDev->bHasDigitalIO);
+	of_property_read_u32_index(gpDev->node, "hasTrigger", 0,
+				   &gpDev->bHasTrigger);
 
 	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
-	if(IS_ERR(gpDev->reg_optics_power))
-		dev_err(dev,"can't get regulator optics_power");
+	if (IS_ERR(gpDev->reg_optics_power))
+		dev_err(dev, "can't get regulator optics_power");
 	else
 		retval = regulator_enable(gpDev->reg_optics_power);
 
 	gpDev->reg_position_sensor = devm_regulator_get(dev, "position_sensor");
-	if(IS_ERR(gpDev->reg_position_sensor))
-		dev_err(dev,"can't get regulator position_sensor");
+	if (IS_ERR(gpDev->reg_position_sensor))
+		dev_err(dev, "can't get regulator position_sensor");
 	else
 		retval = regulator_enable(gpDev->reg_position_sensor);
 
 	gpDev->reg_ring_sensor = devm_regulator_get(dev, "ring_sensor");
-	if(IS_ERR(gpDev->reg_ring_sensor))
-		dev_err(dev,"can't get regulator ring_sensor");
+	if (IS_ERR(gpDev->reg_ring_sensor))
+		dev_err(dev, "can't get regulator ring_sensor");
 	else
 		retval = regulator_enable(gpDev->reg_ring_sensor);
 
 	gpDev->reg_motor_sleep = devm_regulator_get(dev, "motor_sleep");
-	if(IS_ERR(gpDev->reg_motor_sleep))
-		dev_err(dev,"can't get regulator motor_sleep");
+	if (IS_ERR(gpDev->reg_motor_sleep))
+		dev_err(dev, "can't get regulator motor_sleep");
 	else
 		retval = SetMotorSleepRegulator(gpDev, true);
 
-	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
+	of_property_read_u32(gpDev->node, "standbyMinutes",
+			     &gpDev->standbyMinutes);
 
-	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
+	gpDev->backlight =
+	    of_find_backlight_by_node(of_parse_phandle
+				      (gpDev->node, "backlight", 0));
 
 	// Find LEDs
 	down_read(&leds_list_lock);
 	list_for_each_entry(led_cdev, &leds_list, node) {
-	        if (!led_cdev->name) {
-		        dev_err(dev,"finding KAKA leds - listed led name is NULL");
+		if (!led_cdev->name) {
+			dev_err(dev,
+				"finding KAKA leds - listed led name is NULL");
 			continue;
 		}
-	    
+
 		if (strcmp(led_cdev->name, "KAKA_LED2") == 0)
 			gpDev->red_led_cdev = led_cdev;
 		else if (strcmp(led_cdev->name, "KAKA_LED1") == 0)
@@ -156,16 +162,20 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasDigitalIO) {
 		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0, NULL);
-		if (gpio_is_valid(pin) == 0){
+		pin =
+		    of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0,
+					    NULL);
+		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: DigIN0 can not be used\n");
 		} else {
 			gpDev->digin0_gpio = pin;
 			gpio_request(pin, "DigIN0");
 			gpio_direction_input(pin);
 		}
-		pin = of_get_named_gpio_flags(gpDev->node, "digin1-gpios", 0, NULL);
-		if (gpio_is_valid(pin) == 0){
+		pin =
+		    of_get_named_gpio_flags(gpDev->node, "digin1-gpios", 0,
+					    NULL);
+		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: DigIN1 can not be used\n");
 		} else {
 			gpDev->digin1_gpio = pin;
@@ -176,18 +186,24 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasTrigger) {
 		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0, NULL);
-		if (gpio_is_valid(pin) == 0){
+		pin =
+		    of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0,
+					    NULL);
+		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Trigger can not be used\n");
 		} else {
 			gpDev->trigger_gpio = pin;
 			gpio_request(pin, "Trigger");
 			gpio_direction_input(pin);
 			if (request_irq(gpio_to_irq(pin), fadTriggerIST,
-					IRQF_TRIGGER_FALLING, "TriggerGPIO", gpDev))
-				pr_err("flridrv-fad: Failed to register interrupt for trigger...\n");
+					IRQF_TRIGGER_FALLING, "TriggerGPIO",
+					gpDev))
+				pr_err
+				    ("flridrv-fad: Failed to register interrupt for trigger...\n");
 			else
-				pr_debug("flirdrv-fad: Registered interrupt %i for trigger\n", gpio_to_irq(pin));
+				pr_debug
+				    ("flirdrv-fad: Registered interrupt %i for trigger\n",
+				     gpio_to_irq(pin));
 		}
 	}
 
@@ -216,8 +232,8 @@ DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 
 	if (!gpDev->red_led_cdev || !gpDev->blue_led_cdev) {
 		pLED->eState = LED_STATE_OFF;
-	 	return ERROR_SUCCESS;
-        }
+		return ERROR_SUCCESS;
+	}
 
 	if (gpDev->red_led_cdev->brightness)
 		redLed = TRUE;
@@ -247,19 +263,22 @@ DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	unsigned long delay = 0;
 
 	// On Bellatrix the KAKA LED consists of a green and a red LED
-        // The blue_led_cdev actually controls a green LED
-	if (gpDev->red_led_cdev && (gpDev->red_led_cdev->brightness || gpDev->red_led_cdev->blink_delay_on))
+	// The blue_led_cdev actually controls a green LED
+	if (gpDev->red_led_cdev
+	    && (gpDev->red_led_cdev->brightness
+		|| gpDev->red_led_cdev->blink_delay_on))
 		redLed = TRUE;
-	if (gpDev->blue_led_cdev && (gpDev->blue_led_cdev->brightness || gpDev->blue_led_cdev->blink_delay_on))
+	if (gpDev->blue_led_cdev
+	    && (gpDev->blue_led_cdev->brightness
+		|| gpDev->blue_led_cdev->blink_delay_on))
 		greenLed = TRUE;
 
-	if (pLED->eState == LED_FLASH_SLOW || pLED->eState == LED_FLASH_FAST)
-	{
+	if (pLED->eState == LED_FLASH_SLOW || pLED->eState == LED_FLASH_FAST) {
 		if (pLED->eState == LED_FLASH_FAST)
 			delay = 100;
-                else
+		else
 			delay = 500;
-		
+
 		if (redLed) {
 			led_blink_set(gpDev->red_led_cdev, &delay, &delay);
 		}
@@ -267,16 +286,14 @@ DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 		if (greenLed) {
 			led_blink_set(gpDev->blue_led_cdev, &delay, &delay);
 		}
-	}
-	else if (pLED->eState == LED_STATE_ON) {
+	} else if (pLED->eState == LED_STATE_ON) {
 		if (gpDev->blue_led_cdev) {
 			led_set_brightness(gpDev->blue_led_cdev, LED_FULL);
 		}
 		if (gpDev->red_led_cdev) {
 			led_set_brightness(gpDev->red_led_cdev, LED_OFF);
 		}
-	}
-	else if (pLED->eState == LED_STATE_OFF) {
+	} else if (pLED->eState == LED_STATE_OFF) {
 		if (gpDev->blue_led_cdev) {
 			led_set_brightness(gpDev->blue_led_cdev, LED_OFF);
 		}
@@ -294,10 +311,14 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	BOOL greenLed = FALSE;
 
 	// On Bellatrix the KAKA LED consists of a green and a red LED
-        // The blue_led_cdev actually controls a green LED
-	if (gpDev->red_led_cdev && (gpDev->red_led_cdev->brightness || gpDev->red_led_cdev->blink_delay_on))
+	// The blue_led_cdev actually controls a green LED
+	if (gpDev->red_led_cdev
+	    && (gpDev->red_led_cdev->brightness
+		|| gpDev->red_led_cdev->blink_delay_on))
 		redLed = TRUE;
-	if (gpDev->blue_led_cdev && (gpDev->blue_led_cdev->brightness || gpDev->blue_led_cdev->blink_delay_on))
+	if (gpDev->blue_led_cdev
+	    && (gpDev->blue_led_cdev->brightness
+		|| gpDev->blue_led_cdev->blink_delay_on))
 		greenLed = TRUE;
 
 	if ((greenLed == FALSE) && (redLed == FALSE)) {
@@ -323,7 +344,7 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	int greenLed = 0;
 
 	// On Bellatrix the KAKA LED consists of a green and a red LED
-        // The blue_led_cdev actually controls a green LED
+	// The blue_led_cdev actually controls a green LED
 	if (pLED->eState == LED_STATE_ON) {
 		if (pLED->eColor == LED_COLOR_YELLOW) {
 			redLed = 1;
@@ -336,11 +357,13 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	}
 
 	if (gpDev->red_led_cdev) {
-		led_set_brightness(gpDev->red_led_cdev, redLed ? LED_FULL : LED_OFF);
+		led_set_brightness(gpDev->red_led_cdev,
+				   redLed ? LED_FULL : LED_OFF);
 	}
 
 	if (gpDev->blue_led_cdev) {
-		led_set_brightness(gpDev->blue_led_cdev, greenLed ? LED_FULL : LED_OFF);
+		led_set_brightness(gpDev->blue_led_cdev,
+				   greenLed ? LED_FULL : LED_OFF);
 	}
 #endif
 	return ERROR_SUCCESS;
@@ -348,12 +371,12 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 
 void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
 {
-	int digin0_value=0;
-	int digin1_value=0;
+	int digin0_value = 0;
+	int digin1_value = 0;
 #ifdef CONFIG_OF
-	if(gpDev->digin0_gpio)
+	if (gpDev->digin0_gpio)
 		digin0_value = gpio_get_value_cansleep(gpDev->digin0_gpio);
-	if(gpDev->digin1_gpio)
+	if (gpDev->digin1_gpio)
 		digin1_value = gpio_get_value_cansleep(gpDev->digin1_gpio);
 #endif
 	pDigioStatus->usInputState |= digin0_value ? 0x01 : 0x00;
@@ -373,12 +396,12 @@ void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
  */
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-    if(on){
-        gpDev->bLaserEnable=true;
-    } else {
-        gpDev->bLaserEnable=false;
-        stoplaser();
-    }
+	if (on) {
+		gpDev->bLaserEnable = true;
+	} else {
+		gpDev->bLaserEnable = false;
+		stoplaser();
+	}
 }
 
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
@@ -387,94 +410,96 @@ void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 	int state;
 	msleep(100);
 	state = ca111_get_laserstatus();
-	pLaserStatus->bLaserIsOn = state;  //if laser is on
-	pLaserStatus->bLaserPowerEnabled = true; // if switch is pressed...
+	pLaserStatus->bLaserIsOn = state;	//if laser is on
+	pLaserStatus->bLaserPowerEnabled = true;	// if switch is pressed...
 #else
-	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
+	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n",
+	       __func__);
 #endif
 }
 
 void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
-        if (gpDev->bLaserEnable){
-                if(on){
-                        pr_debug("%s: Turning laser on", __func__);
-                        startlaser(gpDev);
-                } else{
-                        pr_debug("%s: Turning laser off", __func__);
-                        stoplaser();
-                }
-        } else {
-                pr_debug("%s: Turning laser off", __func__);
-                stoplaser();
-        }
+	if (gpDev->bLaserEnable) {
+		if (on) {
+			pr_debug("%s: Turning laser on", __func__);
+			startlaser(gpDev);
+		} else {
+			pr_debug("%s: Turning laser off", __func__);
+			stoplaser();
+		}
+	} else {
+		pr_debug("%s: Turning laser off", __func__);
+		stoplaser();
+	}
 }
 
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
-    BOOL value = true;
-    pr_err("%s return value true\n", __func__);
+	BOOL value = true;
+	pr_err("%s return value true\n", __func__);
 	return value;
 }
 
 void startlaser(PFAD_HW_INDEP_INFO gpDev)
 {
 #ifdef CONFIG_OF
-        switch (gpDev->laserMode){
-        case LASERMODE_POINTER: 
-                startmeasure(MSC_RAW, 1);
-                break;
-        case LASERMODE_DISTANCE:
-                switch (gpDev->ldmAccuracy){
-                case LASERMODE_DISTANCE_LOW_ACCURACY:
-                        if(gpDev->ldmContinous){
-                                startmeasure_lq_continous();
-                        } else{
-                                startmeasure_lq_single();
-                        }
-                        break;
-                case LASERMODE_DISTANCE_HIGH_ACCURACY:
-                        if(gpDev->ldmContinous){
-                                startmeasure_hq_continous();
-                        } else{
-                                startmeasure_hq_single();
-                        }
-                        break;
-                        
-                default:
-                        pr_err("%s: Unknown ldm accuracy mode (%i)...\n", __func__, gpDev->ldmAccuracy);
-                        break;
-                }
-                break;
-        default: 
-                pr_err("%s: Unknown lasermode...\n", __func__);
-                break;
-        }
+	switch (gpDev->laserMode) {
+	case LASERMODE_POINTER:
+		startmeasure(MSC_RAW, 1);
+		break;
+	case LASERMODE_DISTANCE:
+		switch (gpDev->ldmAccuracy) {
+		case LASERMODE_DISTANCE_LOW_ACCURACY:
+			if (gpDev->ldmContinous) {
+				startmeasure_lq_continous();
+			} else {
+				startmeasure_lq_single();
+			}
+			break;
+		case LASERMODE_DISTANCE_HIGH_ACCURACY:
+			if (gpDev->ldmContinous) {
+				startmeasure_hq_continous();
+			} else {
+				startmeasure_hq_single();
+			}
+			break;
+
+		default:
+			pr_err("%s: Unknown ldm accuracy mode (%i)...\n",
+			       __func__, gpDev->ldmAccuracy);
+			break;
+		}
+		break;
+	default:
+		pr_err("%s: Unknown lasermode...\n", __func__);
+		break;
+	}
 #endif
 }
 
-
 void stoplaser(void)
 {
-    stopmeasure();
+	stopmeasure();
 }
 
 void stopmeasure(void)
 {
-        startmeasure(MSC_RAW, 0);
+	startmeasure(MSC_RAW, 0);
 }
 
 void startmeasure(int key, int value)
 {
 #if defined (CONFIG_CA111)
 	struct input_dev *button_dev = ca111_get_input_dev();
-	if(button_dev){
+	if (button_dev) {
 		input_event(button_dev, EV_MSC, key, value);
 	} else {
 		pr_err("fad %s: ca111 input_dev is NULL\n", __func__);
 	}
 #else
-    pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n", __func__);
+	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n",
+	       __func__);
 #endif
 }
 
@@ -498,7 +523,6 @@ void startmeasure_lq_continous(void)
 	startmeasure(MSC_GESTURE, 2);
 }
 
-
 /** 
  * setLaserMode
  *
@@ -509,12 +533,11 @@ void startmeasure_lq_continous(void)
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
 {
 #ifdef CONFIG_OF
-        gpDev->laserMode = pLaserMode->mode;
-        gpDev->ldmAccuracy = pLaserMode->accuracy;
-        gpDev->ldmContinous = pLaserMode->continousMeasurment;
+	gpDev->laserMode = pLaserMode->mode;
+	gpDev->ldmAccuracy = pLaserMode->accuracy;
+	gpDev->ldmContinous = pLaserMode->continousMeasurment;
 #endif
 }
-
 
 BOOL setGPSEnable(BOOL on)
 {
@@ -554,11 +577,10 @@ int suspend(PFAD_HW_INDEP_INFO gpDev)
 		res |= regulator_disable(gpDev->reg_optics_power);
 		if (res)
 			pr_err("Optics power disable failed..\n");
-}
+	}
 #endif
 	return 0;
 }
-
 
 int resume(PFAD_HW_INDEP_INFO gpDev)
 {
@@ -594,8 +616,8 @@ int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 	int res = 0;
 #ifdef CONFIG_OF
 	static int enabled = false;
-	if(on){
-		if (! enabled){
+	if (on) {
+		if (!enabled) {
 			res = regulator_enable(gpDev->reg_motor_sleep);
 			enabled = true;
 		} else {
@@ -603,7 +625,7 @@ int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 			res = 0;
 		}
 	} else {
-		if(enabled){
+		if (enabled) {
 			res = regulator_disable(gpDev->reg_motor_sleep);
 			enabled = false;
 		} else {
