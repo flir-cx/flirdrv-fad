@@ -1,5 +1,5 @@
 /***********************************************************************
-*                                                                     
+*
 * Project: Balthazar
 * $Date$
 * $Author$
@@ -11,7 +11,7 @@
 *
 * Last check-in changelist:
 * $Change$
-* 
+*
 *
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
@@ -32,7 +32,7 @@
 // Function prototypes
 
 static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
@@ -49,11 +49,11 @@ static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
 static BOOL setGPSEnable(BOOL on);
-static BOOL getGPSEnable(BOOL * on);
+static BOOL getGPSEnable(BOOL *on);
 static void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout);
 static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
-static void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium,
-				     UINT8 * pHigh);
+static void BspGetSubjBackLightLevel(UINT8 *pLow, UINT8 *pMedium,
+				     UINT8 *pHigh);
 static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
 static irqreturn_t fadDigIN1IST(int irq, void *dev_id);
 int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
@@ -182,7 +182,7 @@ void CleanupHW(PFAD_HW_INDEP_INFO gpDev)
 	}
 }
 
-DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 	int redLed = 0;
 	int blueLed = 0;
@@ -212,7 +212,7 @@ DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	return ERROR_SUCCESS;
 }
 
-DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 	BOOL redLed = FALSE;
 	BOOL blueLed = FALSE;
@@ -265,10 +265,10 @@ BOOL setGPSEnable(BOOL on)
 	return TRUE;
 }
 
-BOOL getGPSEnable(BOOL * on)
+BOOL getGPSEnable(BOOL *on)
 {
-	// GPS does not seem to receive correct signals when switching 
-	// on and off, I2C problems? Temporary fallback solution is to 
+	// GPS does not seem to receive correct signals when switching
+	// on and off, I2C problems? Temporary fallback solution is to
 	// Keep GPS switched on all the time.
 	*on = TRUE;
 	return TRUE;
@@ -282,6 +282,7 @@ void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout)
 
 	if (gpDev->pWdog == NULL) {
 		PHYSICAL_ADDRESS ioPhysicalBase = { CSP_BASE_REG_PA_WDOG1, 0 };
+
 		gpDev->pWdog =
 		    MmMapIoSpace(ioPhysicalBase, sizeof(PCSP_WDOG_REGS), FALSE);
 	}
@@ -397,7 +398,7 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 //
 //  This method returns the keypad backlight in subjective levels.
 //      Since this function works in parallel with the older functions setting
-//      percentage values, it copes with values that differs from the defined 
+//      percentage values, it copes with values that differs from the defined
 //  subjective levels.
 DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
@@ -406,7 +407,7 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 }
 
 #ifdef NOT_YET
-DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLedData)
+DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLedData)
 {
 	DWORD pinState;
 
@@ -428,7 +429,7 @@ DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLedData)
 	return ERROR_SUCCESS;
 }
 
-DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLedData)
+DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLedData)
 {
 	DWORD dwErr = ERROR_SUCCESS;
 
@@ -554,7 +555,7 @@ void BspFadPowerDown(BOOL down)
 }
 #endif
 
-void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
+void BspGetSubjBackLightLevel(UINT8 *pLow, UINT8 *pMedium, UINT8 *pHigh)
 {
 	*pLow = 10;
 	*pMedium = 40;
@@ -582,18 +583,19 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/** 
+/**
  * InitDigitalIOIrq
- * 
+ *
  * Initialize digital io irq if system requires it
  *
- * @param gpDev 
- * 
+ * @param gpDev
+ *
  * @return retval
  */
 int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 {
 	int ret = 0;
+
 	if (gpDev->bHasDigitalIO) {
 		ret = request_irq(gpio_to_irq(DIGIN_1), fadDigIN1IST,
 				  IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "Digin1",

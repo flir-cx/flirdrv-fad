@@ -1,5 +1,5 @@
 /***********************************************************************
-*                                                                     
+*
 * Project: Balthazar
 * $Date$
 * $Author$
@@ -11,7 +11,7 @@
 *
 * Last check-in changelist:
 * $Change$
-* 
+*
 *
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
@@ -31,13 +31,13 @@ static irqreturn_t fadLaserIST(int irq, void *dev_id);
 
 // Code
 
-/** 
+/**
  * InitLaserIrq
- * 
+ *
  * Initialize laser irq if system hase laser
  *
- * @param gpDev 
- * 
+ * @param gpDev
+ *
  * @return retval
  */
 int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev)
@@ -87,11 +87,11 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
 	/* static BOOL bWaitForNeg; */
-/* 	int pin; */
+/*	int pin; */
 /* #ifdef CONFIG_OF */
-/* 	pin = gpDev->laser_on_gpio; */
+/*	pin = gpDev->laser_on_gpio; */
 /* #else */
-/* 	pin = LASER_ON */
+/*	pin = LASER_ON */
 /* #endif */
 	ApplicationEvent(gpDev, FAD_LASER_EVENT);
 	/* if (bWaitForNeg) { */
@@ -110,6 +110,7 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 irqreturn_t fadTriggerIST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
+
 	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "trigger_poll");
 	return IRQ_HANDLED;
 }

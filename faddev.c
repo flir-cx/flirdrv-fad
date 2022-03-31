@@ -1,5 +1,5 @@
 /***********************************************************************
-*                                                                     
+*
 * Project: Balthazar
 * $Date$
 * $Author$
@@ -11,7 +11,7 @@
 *
 * Last check-in changelist:
 * $Change$
-* 
+*
 *
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
@@ -32,11 +32,11 @@
 #include <linux/reboot.h>
 #include <linux/backlight.h>
 #include <../drivers/base/power/power.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 #include <asm/system_info.h>
 #else
 #include <asm/system.h>
-int cpu_is_imx6dl();
+int cpu_is_imx6dl(void);
 #endif
 #define EUNKNOWNCPU 3
 
@@ -53,16 +53,16 @@ MODULE_PARM_DESC(timed_standby,
 // Function prototypes
 static long FAD_IOControl(struct file *filep,
 			  unsigned int cmd, unsigned long arg);
-static unsigned int FadPoll(struct file *filp, poll_table * pt);
-static ssize_t FadRead(struct file *filp, char __user * buf, size_t count,
-		       loff_t * f_pos);
+static unsigned int FadPoll(struct file *filp, poll_table *pt);
+static ssize_t FadRead(struct file *filp, char __user *buf, size_t count,
+		       loff_t *f_pos);
 
 // gpDev is global, which is generally undesired, we can fix this
 // in fad_probe, platform_set_drvdata sets gpDev as the driverdata,
 // if we have the device, we can get the platform with to_platform_device
 static PFAD_HW_INDEP_INFO gpDev;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
 //Workaround to allow 3.14 kernel to work...
 struct platform_device *pdev;
 #endif
@@ -81,7 +81,7 @@ static struct miscdevice fad_miscdev = {
 	.fops = &fad_fops
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0) && LINUX_VERSION_CODE <  KERNEL_VERSION(3,15,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0) && LINUX_VERSION_CODE <  KERNEL_VERSION(3, 15, 0)
 // get_suspend_wakup_source is implemented in evander/lennox (3.14.x) kernel
 struct wakeup_source *get_suspend_wakup_source(void);
 #warning "we use (3.14.x) kernel get_suspend_wakeup_source"
@@ -96,11 +96,11 @@ void *get_suspend_wakup_source(void)
 
 // Code
 
-/** 
+/**
  * CPU Specific initialization
  * Initializes GPIO, GPIO IRQ, etc per platform
- * 
- * 
+ *
+ *
  * @return 0 on success
  */
 static int cpu_initialize(void)
@@ -128,9 +128,9 @@ static int cpu_initialize(void)
 	return retval;
 }
 
-/** 
+/**
  * CPU Specific Deinitialization
- * 
+ *
  */
 static void cpu_deinitialize(void)
 {
@@ -240,6 +240,7 @@ static ssize_t chargersuspend_store(struct device *dev,
 				    const char *buf, size_t len)
 {
 	int ret = 0;
+
 	if (gpDev->pSetChargerSuspend != NULL) {
 		if (strncmp(buf, "1", 1) == 0) {
 			gpDev->pSetChargerSuspend(gpDev, true);
@@ -263,13 +264,13 @@ static ssize_t show_trig(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(timed_standby, S_IRUGO | S_IWUSR, show_timed,
+static DEVICE_ATTR(timed_standby, 0644, show_timed,
 		   timed_standby_store);
-static DEVICE_ATTR(charge_state, S_IRUGO | S_IWUSR, show, charge_state_store);
-static DEVICE_ATTR(fadsuspend, S_IRUGO | S_IWUSR, show, store);
-static DEVICE_ATTR(chargersuspend, S_IRUGO | S_IWUSR, NULL,
+static DEVICE_ATTR(charge_state, 0644, show, charge_state_store);
+static DEVICE_ATTR(fadsuspend, 0644, show, store);
+static DEVICE_ATTR(chargersuspend, 0644, NULL,
 		   chargersuspend_store);
-static DEVICE_ATTR(trigger_poll, S_IRUGO, show_trig, NULL);
+static DEVICE_ATTR(trigger_poll, 0444, show_trig, NULL);
 
 static struct attribute *faddev_sysfs_attrs[] = {
 	&dev_attr_chargersuspend.attr,
@@ -288,6 +289,7 @@ static struct attribute_group faddev_sysfs_attr_grp = {
 int get_wake_reason(void)
 {
 	struct wakeup_source *ws;
+
 	ws = get_suspend_wakup_source();
 
 	if (timed_standby)
@@ -574,7 +576,7 @@ static int __init FAD_Init(void)
 	int retval;
 
 	pr_debug("FAD_Init\n");
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
 	pdev = platform_device_alloc("fad", 1);
 	platform_device_add(pdev);
 #endif
@@ -586,7 +588,7 @@ static int __init FAD_Init(void)
 	return retval;
 }
 
-/** 
+/**
  * FAD_Deinit
  * Cleanup after FAD Init on module unload
  *
@@ -595,7 +597,7 @@ static int __init FAD_Init(void)
 static void __exit FAD_Deinit(void)
 {
 	pr_debug("FAD_Deinit\n");
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,0,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
 	platform_device_del(pdev);
 #endif
 	platform_driver_unregister(&fad_driver);
@@ -603,13 +605,13 @@ static void __exit FAD_Deinit(void)
 
 /**
  * DOIOControl
- * 
- * @param gpDev 
- * @param Ioctl 
- * @param pBuf 
- * @param pUserBuf 
- * 
- * @return 
+ *
+ * @param gpDev
+ * @param Ioctl
+ * @param pBuf
+ * @param pUserBuf
+ *
+ * @return
  */
 static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 		       DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
@@ -882,14 +884,14 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 	return retval;
 }
 
-/** 
+/**
  * FAD_IOControl
- * 
- * @param filep 
- * @param cmd 
- * @param arg 
- * 
- * @return 
+ *
+ * @param filep
+ * @param cmd
+ * @param arg
+ *
+ * @return
  */
 static long FAD_IOControl(struct file *filep,
 			  unsigned int cmd, unsigned long arg)
@@ -928,33 +930,33 @@ static long FAD_IOControl(struct file *filep,
 	return retval;
 }
 
-/** 
+/**
  * FADPoll
- * 
- * @param filp 
- * @param pt 
- * 
- * @return 
+ *
+ * @param filp
+ * @param pt
+ *
+ * @return
  */
-static unsigned int FadPoll(struct file *filp, poll_table * pt)
+static unsigned int FadPoll(struct file *filp, poll_table *pt)
 {
 	poll_wait(filp, &gpDev->wq, pt);
 
 	return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
 
-/** 
+/**
  * FadRead
- * 
- * @param filp 
- * @param buf 
- * @param count 
- * @param f_pos 
- * 
- * @return 
+ *
+ * @param filp
+ * @param buf
+ * @param count
+ * @param f_pos
+ *
+ * @return
  */
 static ssize_t FadRead(struct file *filp, char *buf, size_t count,
-		       loff_t * f_pos)
+		       loff_t *f_pos)
 {
 	int res;
 

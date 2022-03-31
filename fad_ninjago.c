@@ -41,10 +41,10 @@ extern int ca111_get_laserstatus(void);
 
 // Function prototypes
 
-static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
+static DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
+static DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLDIGIO pDigioStatus);
 
@@ -64,7 +64,7 @@ void startmeasure_hq_single(void);
 void startmeasure_lq_continous(void);
 void startmeasure_lq_single(void);
 static BOOL setGPSEnable(BOOL on);
-static BOOL getGPSEnable(BOOL * on);
+static BOOL getGPSEnable(BOOL *on);
 
 static int suspend(PFAD_HW_INDEP_INFO gpDev);
 static int resume(PFAD_HW_INDEP_INFO gpDev);
@@ -81,6 +81,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
 	struct device *dev = &gpDev->pLinuxDevice->dev;
+
 	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 #endif
 
@@ -162,6 +163,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasDigitalIO) {
 		int pin;
+
 		pin =
 		    of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0,
 					    NULL);
@@ -186,6 +188,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasTrigger) {
 		int pin;
+
 		pin =
 		    of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0,
 					    NULL);
@@ -224,7 +227,7 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 }
 
-DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 #ifdef CONFIG_OF
 	BOOL redLed = FALSE;
@@ -255,7 +258,7 @@ DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	return ERROR_SUCCESS;
 }
 
-DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 #ifdef CONFIG_OF
 	BOOL redLed = FALSE;
@@ -305,7 +308,7 @@ DWORD setLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	return ERROR_SUCCESS;
 }
 
-DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 	BOOL redLed = FALSE;
 	BOOL greenLed = FALSE;
@@ -337,7 +340,7 @@ DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
 	return ERROR_SUCCESS;
 }
 
-DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 #ifdef CONFIG_OF
 	int redLed = 0;
@@ -383,15 +386,15 @@ void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
 	pDigioStatus->usInputState |= digin1_value ? 0x02 : 0x00;
 }
 
-/** 
- * setLaserStatus tells if *laser* is allowed to be turned on, but will not 
+/**
+ * setLaserStatus tells if *laser* is allowed to be turned on, but will not
  * turn on the laser
  *
  * Laser is allowed if no lens is covering the laseroptics, and the correct
  * attribute in appcore is set.
- * 
- * 
- * @param gpDev 
+ *
+ *
+ * @param gpDev
  * @param on if set, laser is allowed, if false, turn off laser!!
  */
 void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
@@ -406,8 +409,9 @@ void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 
 void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
 {
-#if defined (CONFIG_CA111)
+#if defined(CONFIG_CA111)
 	int state;
+
 	msleep(100);
 	state = ca111_get_laserstatus();
 	pLaserStatus->bLaserIsOn = state;	//if laser is on
@@ -437,6 +441,7 @@ void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 {
 	BOOL value = true;
+
 	pr_err("%s return value true\n", __func__);
 	return value;
 }
@@ -490,8 +495,9 @@ void stopmeasure(void)
 
 void startmeasure(int key, int value)
 {
-#if defined (CONFIG_CA111)
+#if defined(CONFIG_CA111)
 	struct input_dev *button_dev = ca111_get_input_dev();
+
 	if (button_dev) {
 		input_event(button_dev, EV_MSC, key, value);
 	} else {
@@ -523,11 +529,11 @@ void startmeasure_lq_continous(void)
 	startmeasure(MSC_GESTURE, 2);
 }
 
-/** 
+/**
  * setLaserMode
  *
- * 
- * @param gpDev 
+ *
+ * @param gpDev
  * @param on if set, laser is allowed, if false, turn off laser!!
  */
 void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
@@ -546,7 +552,7 @@ BOOL setGPSEnable(BOOL on)
 	return TRUE;
 }
 
-BOOL getGPSEnable(BOOL * on)
+BOOL getGPSEnable(BOOL *on)
 {
 	*on = TRUE;
 	return TRUE;
@@ -556,6 +562,7 @@ int suspend(PFAD_HW_INDEP_INFO gpDev)
 {
 #ifdef CONFIG_OF
 	int res = 0;
+
 	pr_debug("Disbling motor regulator...\n");
 	res = SetMotorSleepRegulator(gpDev, false);
 	if (res)
@@ -615,7 +622,8 @@ int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 	int res = 0;
 #ifdef CONFIG_OF
-	static int enabled = false;
+	static int enabled;
+
 	if (on) {
 		if (!enabled) {
 			res = regulator_enable(gpDev->reg_motor_sleep);

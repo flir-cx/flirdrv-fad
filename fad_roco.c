@@ -1,5 +1,5 @@
 /***********************************************************************
-*                                                                     
+*
 * Project: Balthazar
 * $Date$
 * $Author$
@@ -11,7 +11,7 @@
 *
 * Last check-in changelist:
 * $Change$
-* 
+*
 *
 *  FADDEV Copyright : FLIR Systems AB
 ***********************************************************************/
@@ -40,8 +40,8 @@
 
 // Function prototypes
 
-static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
-static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
+static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
+static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLDIGIO pDigioStatus);
 static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
@@ -56,7 +56,7 @@ static DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 static DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 				    PFADDEVIOCTLSUBJBACKLIGHT pBacklight);
 static BOOL setGPSEnable(BOOL on);
-static BOOL getGPSEnable(BOOL * on);
+static BOOL getGPSEnable(BOOL *on);
 static void WdogInit(PFAD_HW_INDEP_INFO gpDev, UINT32 Timeout);
 static BOOL WdogService(PFAD_HW_INDEP_INFO gpDev);
 #ifdef CONFIG_OF
@@ -157,6 +157,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasLaser) {
 		int pin;
+
 		pin =
 		    of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0,
 					    NULL);
@@ -178,6 +179,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasLaser) {
 		int pin;
+
 		pin =
 		    of_get_named_gpio_flags(gpDev->node, "laser_soft-gpios", 0,
 					    NULL);
@@ -198,6 +200,7 @@ int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasLaser) {
 		int pin;
+
 		pin =
 		    of_get_named_gpio_flags(gpDev->node, "laser_switch-gpios",
 					    0, NULL);
@@ -244,10 +247,10 @@ EXIT:
 	return retval;
 }
 
-/** 
+/**
  * Inverse setup done in SetupMX6Q...
- * 
- * @param gpDev 
+ *
+ * @param gpDev
  */
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 {
@@ -292,12 +295,12 @@ void CleanupHW(PFAD_HW_INDEP_INFO gpDev)
 	    ("flirdrv-fad: CleanupHW handled by unloading the FAD kernel module...");
 }
 
-DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 	return 0;
 }
 
-DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED)
+DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
 {
 	return 0;
 }
@@ -321,6 +324,7 @@ void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev)
 {
 	if (gpDev->bHasSoftwareControlledLaser) {
 		FADDEVIOCTLLASER laserStatus = { 0 };
+
 		getLaserStatus(gpDev, &laserStatus);
 
 		if (laserStatus.bLaserIsOn && laserStatus.bLaserPowerEnabled) {
@@ -354,10 +358,10 @@ BOOL setGPSEnable(BOOL on)
 	return TRUE;
 }
 
-BOOL getGPSEnable(BOOL * on)
+BOOL getGPSEnable(BOOL *on)
 {
-	// GPS does not seem to receive correct signals when switching 
-	// on and off, I2C problems? Temporary fallback solution is to 
+	// GPS does not seem to receive correct signals when switching
+	// on and off, I2C problems? Temporary fallback solution is to
 	// Keep GPS switched on all the time.
 	*on = TRUE;
 	return TRUE;
@@ -383,12 +387,12 @@ void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 #endif
 }
 
-/** 
+/**
  * Read gpio value laser_soft-gpios,
- * 
- * 
- * @param gpDev 
- * 
+ *
+ *
+ * @param gpDev
+ *
  * @return output of gpio_get_value_cansleep(pin)
  */
 BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
@@ -443,19 +447,19 @@ DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 	return ERROR_SUCCESS;
 }
 
-/** 
- * 
+/**
+ *
  *  Function:  GetKeypadSubjBacklight
  *
  *    This method returns the keypad backlight in subjective levels.
  *    Since this function works in parallel with the older functions setting
- *    percentage values, it copes with values that differs from the defined 
+ *    percentage values, it copes with values that differs from the defined
  *    subjective levels.
  *
- * @param gpDev 
- * @param pBacklight 
- * 
- * @return 
+ * @param gpDev
+ * @param pBacklight
+ *
+ * @return
  */
 DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLSUBJBACKLIGHT pBacklight)
@@ -464,6 +468,7 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 	int brightness;
 
 	UINT8 bl_value;
+
 	brightness = gpDev->pike_cdev->brightness;
 
 	bl_value = (UINT8) brightness;
@@ -487,7 +492,7 @@ DWORD GetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
 }
 
 #ifdef CONFIG_OF
-void BspGetSubjBackLightLevel(UINT8 * pLow, UINT8 * pMedium, UINT8 * pHigh)
+void BspGetSubjBackLightLevel(UINT8 *pLow, UINT8 *pMedium, UINT8 *pHigh)
 {
 	*pLow = 10;
 	*pMedium = 40;
