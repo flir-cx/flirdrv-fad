@@ -101,10 +101,12 @@ static int cpu_initialize(void)
 {
 	int retval;
 #ifdef CONFIG_OF
-	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
+	if (of_machine_is_compatible("fsl,imx6dl-ec501"))
+		gpDev->bHasKAKALed = TRUE;
+
+	if (of_machine_is_compatible("flir,ninjago") ||
+	    of_machine_is_compatible("fsl,imx6dl-ec101") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
-		if (of_machine_is_compatible("fsl,imx6dl-ec501"))
-			gpDev->bHasKAKALed = TRUE;
 		retval = SetupMX6Platform(gpDev);
 	} else if (of_machine_is_compatible("fsl,imx6q")) {
 		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
@@ -129,7 +131,8 @@ static int cpu_initialize(void)
 static void cpu_deinitialize(void)
 {
 #ifdef CONFIG_OF
-	if (of_machine_is_compatible("fsl,imx6dl-ec101") ||
+	if (of_machine_is_compatible("flir,ninjago") ||
+	    of_machine_is_compatible("fsl,imx6dl-ec101") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
 		InvSetupMX6Platform(gpDev);
 	} else if (of_machine_is_compatible("fsl,imx6q")) {
