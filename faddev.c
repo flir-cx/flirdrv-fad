@@ -149,8 +149,8 @@ static void cpu_deinitialize(void)
  *
  */
 
-static ssize_t show(struct device *dev, struct device_attribute *attr,
-		    char *buf)
+static ssize_t charge_state_show(struct device *dev, struct device_attribute *attr,
+				 char *buf)
 {
 	switch (power_state) {
 	case SUSPEND_STATE:
@@ -173,8 +173,14 @@ static ssize_t show(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
-static ssize_t store(struct device *dev, struct device_attribute *attr,
-		     const char *buf, size_t len)
+static ssize_t fadsuspend_show(struct device *dev, struct device_attribute *attr,
+				 char *buf)
+{
+	return charge_state_show(dev, attr, buf);
+}
+
+static ssize_t fadsuspend_store(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t len)
 {
 	if (gpDev->bSuspend) {
 		if ((len == 1) && (*buf == '1'))
@@ -205,8 +211,8 @@ static ssize_t charge_state_store(struct device *dev,
 	return len;
 }
 
-static ssize_t show_timed(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static ssize_t timed_standby_show(struct device *dev, struct device_attribute *attr,
+				  char *buf)
 {
 	if (timed_standby)
 		strcpy(buf, "on");
@@ -250,21 +256,19 @@ static ssize_t chargersuspend_store(struct device *dev,
 	return ret;
 }
 
-static ssize_t show_trig(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t trigger_poll_show(struct device *dev, struct device_attribute *attr,
+				 char *buf)
 {
 	strcpy(buf, "X");
 
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(timed_standby, 0644, show_timed,
-		   timed_standby_store);
-static DEVICE_ATTR(charge_state, 0644, show, charge_state_store);
-static DEVICE_ATTR(fadsuspend, 0644, show, store);
-static DEVICE_ATTR(chargersuspend, 0644, NULL,
-		   chargersuspend_store);
-static DEVICE_ATTR(trigger_poll, 0444, show_trig, NULL);
+static DEVICE_ATTR(timed_standby, 0644, timed_standby_show, timed_standby_store);
+static DEVICE_ATTR(charge_state, 0644, charge_state_show, charge_state_store);
+static DEVICE_ATTR(fadsuspend, 0644, fadsuspend_show, fadsuspend_store);
+static DEVICE_ATTR(chargersuspend, 0644, NULL, chargersuspend_store);
+static DEVICE_ATTR(trigger_poll, 0444, trigger_poll_show, NULL);
 
 static struct attribute *faddev_sysfs_attrs[] = {
 	&dev_attr_chargersuspend.attr,
