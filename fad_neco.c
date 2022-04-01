@@ -573,8 +573,6 @@ irqreturn_t fadDigIN1IST(int irq, void *dev_id)
 		bWaitForNeg = TRUE;
 	}
 
-	pr_err("flirdrv-fad: fadDigIN1IST\n");
-
 	return IRQ_HANDLED;
 }
 

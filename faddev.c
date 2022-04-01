@@ -349,7 +349,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 
 	switch (val) {
 	case PM_SUSPEND_PREPARE:
-		pr_debug("fad_notify: SUSPEND %d\n", gpDev->standbyMinutes);
+		pr_debug("%s: SUSPEND %d\n", __func__, gpDev->standbyMinutes);
 
 		// Make appcore enter standby
 		power_state = SUSPEND_STATE;
@@ -380,7 +380,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
-		pr_debug("fad_notify: POST_SUSPEND\n");
+		pr_debug("%s: POST_SUSPEND\n", __func__);
 		if (get_wake_reason() == USB_CABLE_WAKE)
 			power_state = USB_CHARGE_STATE;
 		else
@@ -573,7 +573,6 @@ static int __init FAD_Init(void)
 {
 	int retval;
 
-	pr_debug("FAD_Init\n");
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	pdev = platform_device_alloc("fad", 1);
 	platform_device_add(pdev);
@@ -594,7 +593,6 @@ static int __init FAD_Init(void)
  */
 static void __exit FAD_Deinit(void)
 {
-	pr_debug("FAD_Deinit\n");
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	platform_device_del(pdev);
 #endif

@@ -285,8 +285,7 @@ void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev)
 
 void CleanupHW(PFAD_HW_INDEP_INFO gpDev)
 {
-	pr_warn
-	    ("flirdrv-fad: CleanupHW handled by unloading the FAD kernel module...");
+	pr_warn("%s handled by unloading the FAD kernel module...", __func__);
 }
 
 DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
@@ -402,7 +401,7 @@ BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
 
 void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
 {
-	pr_debug("flirdrv-fad SetBuzzerFrequency not implemented\n");
+	pr_debug("%s not implemented\n", __func__);
 }
 
 DWORD SetKeypadSubjBacklight(PFAD_HW_INDEP_INFO gpDev,
