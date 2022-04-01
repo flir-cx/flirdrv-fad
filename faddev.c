@@ -413,8 +413,7 @@ static int fad_probe(struct platform_device *pdev)
 		    ("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
 		goto exit;
 	}
-	gpDev->alarm =
-	    (struct alarm *)devm_kzalloc(&pdev->dev, sizeof(struct alarm),
+	gpDev->alarm = devm_kzalloc(&pdev->dev, sizeof(struct alarm),
 					 GFP_KERNEL);
 	if (!gpDev->alarm) {
 		ret = -ENOMEM;
@@ -744,9 +743,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->
-			    pSetGPSEnable(((PFADDEVIOCTLGPS)
-					   pBuf)->bGPSEnabled);
+			gpDev->pSetGPSEnable(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled);
 			bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
@@ -758,10 +755,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->
-			    pGetGPSEnable(&
-					  (((PFADDEVIOCTLGPS)
-					    pBuf)->bGPSEnabled));
+			gpDev->pGetGPSEnable(&(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled));
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
