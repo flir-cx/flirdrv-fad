@@ -274,7 +274,11 @@ static DEVICE_ATTR(chargersuspend, 0644, NULL, chargersuspend_store);
 static DEVICE_ATTR(trigger_poll, 0444, trigger_poll_show, NULL);
 
 static struct attribute *faddev_sysfs_attrs[] = {
+	&dev_attr_timed_standby.attr,
+	&dev_attr_charge_state.attr,
+	&dev_attr_fadsuspend.attr,
 	&dev_attr_chargersuspend.attr,
+	&dev_attr_trigger_poll.attr,
 	NULL
 };
 
@@ -445,38 +449,14 @@ static int fad_probe(struct platform_device *pdev)
 		pr_err("flirdrv-fad: Failed to initialize CPU\n");
 		goto exit_cpuinitialize;
 	}
-	// Set up suspend handling
-	ret = device_create_file(&pdev->dev, &dev_attr_fadsuspend);
-	if (ret) {
-		pr_err("FADDEV Error creating sysfs grp control\n");
-		goto exit_createfile_fadsuspend;
-	}
-	ret = device_create_file(&pdev->dev, &dev_attr_timed_standby);
-	if (ret) {
-		pr_err("FADDEV Error creating sysfs grp control\n");
-		goto exit_createfile_timedstandby;
-	}
 
-	if (gpDev->bHasTrigger) {
-		ret = device_create_file(&pdev->dev, &dev_attr_trigger_poll);
-		if (ret) {
-			pr_err("FADDEV Error creating sysfs grp control\n");
-			goto exit_createfile_trigger_poll;
-		}
-	}
 	ret = sysfs_create_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_sysfs_create_group;
 	}
+
 #ifdef CONFIG_OF
-	ret =
-	    device_create_file(&gpDev->pLinuxDevice->dev,
-			       &dev_attr_charge_state);
-	if (ret) {
-		pr_err("FADDEV Error creating sysfs grp control\n");
-		goto exit_sysfs_createfile_chargestate;
-	}
 	gpDev->nb.notifier_call = fad_notify;
 	gpDev->nb.priority = 0;
 	ret = register_pm_notifier(&gpDev->nb);
@@ -492,17 +472,12 @@ static int fad_probe(struct platform_device *pdev)
 #ifdef CONFIG_OF
 	unregister_pm_notifier(&gpDev->nb);
 exit_register_pm_notifier:
-	device_remove_file(&pdev->dev, &dev_attr_charge_state);
 exit_sysfs_createfile_chargestate:
 #endif
 	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 exit_sysfs_create_group:
-	if (gpDev->bHasTrigger)
-		device_remove_file(&pdev->dev, &dev_attr_trigger_poll);
 exit_createfile_trigger_poll:
-	device_remove_file(&pdev->dev, &dev_attr_timed_standby);
 exit_createfile_timedstandby:
-	device_remove_file(&pdev->dev, &dev_attr_fadsuspend);
 exit_createfile_fadsuspend:
 	cpu_deinitialize();
 exit_cpuinitialize:
@@ -516,16 +491,10 @@ static int fad_remove(struct platform_device *pdev)
 	pr_debug("Removing FAD driver\n");
 #ifdef CONFIG_OF
 	unregister_pm_notifier(&gpDev->nb);
-	device_remove_file(&pdev->dev, &dev_attr_charge_state);
 #endif
-	device_remove_file(&pdev->dev, &dev_attr_fadsuspend);
-	device_remove_file(&pdev->dev, &dev_attr_timed_standby);
-	if (gpDev->bHasTrigger)
-		device_remove_file(&pdev->dev, &dev_attr_trigger_poll);
 	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 	cpu_deinitialize();
 	misc_deregister(&fad_miscdev);
-//      kfree(gpDev);
 	return 0;
 }
 
