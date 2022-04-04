@@ -101,13 +101,10 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	//Do not care about return value of function
 	//If property is missing, assume device doesnt exist!
 	//Better to wrap this in separate function... (int -> bool etc...)
-	of_property_read_u32_index(gpDev->node,
-				   "hasLaser", 0, &gpDev->bHasLaser);
+	of_property_read_u32_index(gpDev->node, "hasLaser", 0, &gpDev->bHasLaser);
 	of_property_read_u32_index(gpDev->node, "hasGPS", 0, &gpDev->bHasGPS);
-	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0,
-				   &gpDev->bHasDigitalIO);
-	of_property_read_u32_index(gpDev->node, "hasTrigger", 0,
-				   &gpDev->bHasTrigger);
+	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
+	of_property_read_u32_index(gpDev->node, "hasTrigger", 0, &gpDev->bHasTrigger);
 
 	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
 	if (IS_ERR(gpDev->reg_optics_power))
@@ -133,19 +130,15 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = SetMotorSleepRegulator(gpDev, true);
 
-	of_property_read_u32(gpDev->node, "standbyMinutes",
-			     &gpDev->standbyMinutes);
+	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
+	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
 
-	gpDev->backlight =
-	    of_find_backlight_by_node(of_parse_phandle
-				      (gpDev->node, "backlight", 0));
 
 	// Find LEDs
 	down_read(&leds_list_lock);
 	list_for_each_entry(led_cdev, &leds_list, node) {
 		if (!led_cdev->name) {
-			dev_err(dev,
-				"finding KAKA leds - listed led name is NULL");
+			dev_err(dev, "finding KAKA leds - listed led name is NULL");
 			continue;
 		}
 
@@ -159,9 +152,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->bHasDigitalIO) {
 		int pin;
 
-		pin =
-		    of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0,
-					    NULL);
+		pin = of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: DigIN0 can not be used\n");
 		} else {
@@ -169,9 +160,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 			gpio_request(pin, "DigIN0");
 			gpio_direction_input(pin);
 		}
-		pin =
-		    of_get_named_gpio_flags(gpDev->node, "digin1-gpios", 0,
-					    NULL);
+		pin = of_get_named_gpio_flags(gpDev->node, "digin1-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: DigIN1 can not be used\n");
 		} else {
@@ -183,31 +172,20 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasTrigger) {
 		int pin;
-
-		pin =
-		    of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0,
-					    NULL);
+		pin = of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Trigger can not be used\n");
 		} else {
 			gpDev->trigger_gpio = pin;
 			gpio_request(pin, "Trigger");
 			gpio_direction_input(pin);
-			if (request_irq(gpio_to_irq(pin), fadTriggerIST,
-					IRQF_TRIGGER_FALLING, "TriggerGPIO",
-					gpDev))
-				pr_err
-				    ("flridrv-fad: Failed to register interrupt for trigger...\n");
+			if (request_irq(gpio_to_irq(pin), fadTriggerIST, IRQF_TRIGGER_FALLING, "TriggerGPIO", gpDev))
+				pr_err("flridrv-fad: Failed to register interrupt for trigger...\n");
 			else
-				pr_debug
-				    ("flirdrv-fad: Registered interrupt %i for trigger\n",
-				     gpio_to_irq(pin));
+				pr_debug("flirdrv-fad: Registered interrupt %i for trigger\n", gpio_to_irq(pin));
 		}
 	}
 
-	return retval;
-
-	//EXIT_NO_LASERIRQ:
 #endif
 	return retval;
 }
@@ -219,7 +197,18 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
  */
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
+	if (gpDev->trigger_gpio)
+		free_irq(gpio_to_irq(gpDev->trigger_gpio), gpDev);
 
+	SetMotorSleepRegulator(gpDev, false);
+	regulator_disable(gpDev->reg_ring_sensor);
+	regulator_disable(gpDev->reg_position_sensor);
+	regulator_disable(gpDev->reg_optics_power);
+
+	if (gpDev->digin0_gpio)
+		gpio_free(gpDev->digin0_gpio);
+	if (gpDev->digin1_gpio)
+		gpio_free(gpDev->digin1_gpio);
 }
 
 DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED)
@@ -617,7 +606,7 @@ int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 	int res = 0;
 #ifdef CONFIG_OF
-	static int enabled;
+	static bool enabled = false;
 
 	if (on) {
 		if (!enabled) {

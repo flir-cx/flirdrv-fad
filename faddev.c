@@ -45,11 +45,9 @@ MODULE_PARM_DESC(timed_standby,
 		 "If set to 1, Wake up camera after 1 minute in suspend (instead of 6 hours)");
 
 // Function prototypes
-static long FAD_IOControl(struct file *filep,
-			  unsigned int cmd, unsigned long arg);
+static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long arg);
 static unsigned int FadPoll(struct file *filp, poll_table *pt);
-static ssize_t FadRead(struct file *filp, char __user *buf, size_t count,
-		       loff_t *f_pos);
+static ssize_t FadRead(struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
 
 // gpDev is global, which is generally undesired, we can fix this
 // in fad_probe, platform_set_drvdata sets gpDev as the driverdata,
@@ -63,7 +61,6 @@ struct platform_device *pdev;
 
 static const struct file_operations fad_fops = {
 	.owner = THIS_MODULE,
-//              .ioctl = FAD_IOControl,
 	.unlocked_ioctl = FAD_IOControl,
 	.read = FadRead,
 	.poll = FadPoll,
@@ -580,11 +577,10 @@ static void __exit FAD_Deinit(void)
  *
  * @return
  */
-static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
-		       DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
+static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
 	int retval = ERROR_INVALID_PARAMETER;
-//    static ULONG ulWdogTime = 5000;    // 5 seconds
+	//    static ULONG ulWdogTime = 5000;    // 5 seconds
 	static BOOL bGPSEnable = FALSE;
 
 	switch (Ioctl) {
@@ -593,8 +589,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev,
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->bLaserEnable =
-			    ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
+			gpDev->bLaserEnable = ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
 			gpDev->pSetLaserStatus(gpDev, gpDev->bLaserEnable);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
