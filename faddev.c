@@ -154,19 +154,19 @@ static ssize_t charge_state_show(struct device *dev, struct device_attribute *at
 {
 	switch (power_state) {
 	case SUSPEND_STATE:
-		strcpy(buf, "suspend");
+		strcpy(buf, "suspend\n");
 		break;
 
 	case ON_STATE:
-		strcpy(buf, "run");
+		strcpy(buf, "run\n");
 		break;
 
 	case USB_CHARGE_STATE:
-		strcpy(buf, "charge");
+		strcpy(buf, "charge\n");
 		break;
 
 	default:
-		strcpy(buf, "unknown");
+		strcpy(buf, "unknown\n");
 		break;
 	}
 
@@ -215,9 +215,9 @@ static ssize_t timed_standby_show(struct device *dev, struct device_attribute *a
 				  char *buf)
 {
 	if (timed_standby)
-		strcpy(buf, "on");
+		strcpy(buf, "on\n");
 	else
-		strcpy(buf, "off");
+		strcpy(buf, "off\n");
 
 	return strlen(buf);
 }
@@ -259,7 +259,7 @@ static ssize_t chargersuspend_store(struct device *dev,
 static ssize_t trigger_poll_show(struct device *dev, struct device_attribute *attr,
 				 char *buf)
 {
-	strcpy(buf, "X");
+	strcpy(buf, "X\n");
 
 	return strlen(buf);
 }
