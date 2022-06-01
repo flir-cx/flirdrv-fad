@@ -72,10 +72,11 @@ static struct miscdevice fad_miscdev = {
 	.fops = &fad_fops
 };
 
-#if KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE  && KERNEL_VERSION(3, 15, 0) > LINUX_VERSION_CODE
-// get_suspend_wakup_source is implemented in evander/lennox (3.14.x) kernel
+#if (KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE && KERNEL_VERSION(3, 15, 0) > LINUX_VERSION_CODE) || (KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE)
+
+// get_suspend_wakup_source is implemented in evander/lennox 3.14.x & 5.10.y kernels
 struct wakeup_source *get_suspend_wakup_source(void);
-#warning "we use (3.14.x) kernel get_suspend_wakeup_source"
+#warning "we use 3.14.x & 5.10.y kernels get_suspend_wakeup_source"
 
 #else
 #warning "local dummy wakeup compatibility due to kernel version check - do not expect 6 hour standby->off to work"
@@ -207,7 +208,7 @@ static ssize_t charge_state_store(struct device *dev,
 	else
 		return -EINVAL;
 
-	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "fadsuspend");
+	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
 	return len;
 }
 
@@ -358,8 +359,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		// Make appcore enter standby
 		power_state = SUSPEND_STATE;
 		gpDev->bSuspend = 1;
-		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL,
-			     "fadsuspend");
+		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
 
 		if (timed_standby) {
 			// Set a timer to wake us up in 1 minute
@@ -392,8 +392,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 
 		gpDev->bSuspend = 0;
 		alarm_cancel(gpDev->alarm);
-		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL,
-			     "fadsuspend");
+		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
