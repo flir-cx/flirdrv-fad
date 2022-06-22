@@ -26,8 +26,7 @@
 #include <linux/platform_device.h>
 #include <linux/input.h>
 
-extern struct input_dev *ca111_get_input_dev(void);
-extern int ca111_get_laserstatus(void);
+
 
 // Definitions
 #define ENOLASERIRQ 1
@@ -43,21 +42,7 @@ static DWORD getLedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLDIGIO pDigioStatus);
 
-static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
-static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
-			   PFADDEVIOCTLLASER pLaserStatus);
-static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
-static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
-void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode);
 
-void startlaser(PFAD_HW_INDEP_INFO gpDev);
-void stoplaser(void);
-void startmeasure(int key, int value);
-void stopmeasure(void);
-void startmeasure_hq_continous(void);
-void startmeasure_hq_single(void);
-void startmeasure_lq_continous(void);
-void startmeasure_lq_single(void);
 static BOOL setGPSEnable(BOOL on);
 static BOOL getGPSEnable(BOOL *on);
 
@@ -85,11 +70,6 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pGetKAKALedState = getKAKALedState;
 	gpDev->pSetKAKALedState = setKAKALedState;
 	gpDev->pGetDigitalStatus = getDigitalStatus;
-	gpDev->pSetLaserStatus = setLaserStatus;
-	gpDev->pGetLaserStatus = getLaserStatus;
-	gpDev->pSetLaserActive = SetLaserActive;
-	gpDev->pGetLaserActive = GetLaserActive;
-	gpDev->pSetLaserMode = setLaserMode;
 	gpDev->pSetGPSEnable = setGPSEnable;
 	gpDev->pGetGPSEnable = getGPSEnable;
 	gpDev->pSetChargerSuspend = SetChargerSuspend;
@@ -105,6 +85,16 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32_index(gpDev->node, "hasGPS", 0, &gpDev->bHasGPS);
 	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
 	of_property_read_u32_index(gpDev->node, "hasTrigger", 0, &gpDev->bHasTrigger);
+	of_property_read_u32_index(gpDev->node, "HasKAKALed", 0,&gpDev->bHasKAKALed);
+
+	// Determine what laser device to use
+	if (gpDev->bHasLaser) {
+		if (of_machine_is_compatible("fsl,imx6qp-eoco")){
+			retval = SetupLaserPointer(gpDev);
+		} else {
+			retval = SetupLaserDistance(gpDev);
+		}
+	}
 
 	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
 	if (IS_ERR(gpDev->reg_optics_power))
@@ -133,21 +123,22 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
 	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
 
-
 	// Find LEDs
-	down_read(&leds_list_lock);
-	list_for_each_entry(led_cdev, &leds_list, node) {
-		if (!led_cdev->name) {
-			dev_err(dev, "finding KAKA leds - listed led name is NULL");
-			continue;
-		}
+	if (gpDev->bHasKAKALed) {
+		down_read(&leds_list_lock);
+		list_for_each_entry(led_cdev, &leds_list, node) {
+			if (!led_cdev->name) {
+				dev_err(dev, "finding KAKA leds - listed led name is NULL");
+				continue;
+			}
 
-		if (strcmp(led_cdev->name, "KAKA_LED2") == 0)
-			gpDev->red_led_cdev = led_cdev;
-		else if (strcmp(led_cdev->name, "KAKA_LED1") == 0)
-			gpDev->blue_led_cdev = led_cdev;
+			if (strcmp(led_cdev->name, "KAKA_LED2") == 0)
+				gpDev->red_led_cdev = led_cdev;
+			else if (strcmp(led_cdev->name, "KAKA_LED1") == 0)
+				gpDev->blue_led_cdev = led_cdev;
+		}
+		up_read(&leds_list_lock);
 	}
-	up_read(&leds_list_lock);
 
 	if (gpDev->bHasDigitalIO) {
 		int pin;
@@ -197,6 +188,12 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
  */
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
+	if (gpDev->bHasLaser) {
+		if (of_machine_is_compatible("fsl,imx6qp-eoco")){
+			InvSetupLaserPointer(gpDev);
+		}
+	}
+
 	if (gpDev->trigger_gpio)
 		free_irq(gpio_to_irq(gpDev->trigger_gpio), gpDev);
 
@@ -370,164 +367,6 @@ void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
 	pDigioStatus->usInputState |= digin1_value ? 0x02 : 0x00;
 }
 
-/**
- * setLaserStatus tells if *laser* is allowed to be turned on, but will not
- * turn on the laser
- *
- * Laser is allowed if no lens is covering the laseroptics, and the correct
- * attribute in appcore is set.
- *
- *
- * @param gpDev
- * @param on if set, laser is allowed, if false, turn off laser!!
- */
-void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
-{
-	if (on) {
-		gpDev->bLaserEnable = true;
-	} else {
-		gpDev->bLaserEnable = false;
-		stoplaser();
-	}
-}
-
-void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
-{
-#if defined(CONFIG_CA111)
-	int state;
-
-	msleep(100);
-	state = ca111_get_laserstatus();
-	pLaserStatus->bLaserIsOn = state;	//if laser is on
-	pLaserStatus->bLaserPowerEnabled = true;	// if switch is pressed...
-#else
-	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n",
-	       __func__);
-#endif
-}
-
-void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
-{
-	if (gpDev->bLaserEnable) {
-		if (on) {
-			pr_debug("%s: Turning laser on", __func__);
-			startlaser(gpDev);
-		} else {
-			pr_debug("%s: Turning laser off", __func__);
-			stoplaser();
-		}
-	} else {
-		pr_debug("%s: Turning laser off", __func__);
-		stoplaser();
-	}
-}
-
-BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
-{
-	BOOL value = true;
-
-	pr_err("%s return value true\n", __func__);
-	return value;
-}
-
-void startlaser(PFAD_HW_INDEP_INFO gpDev)
-{
-#ifdef CONFIG_OF
-	switch (gpDev->laserMode) {
-	case LASERMODE_POINTER:
-		startmeasure(MSC_RAW, 1);
-		break;
-	case LASERMODE_DISTANCE:
-		switch (gpDev->ldmAccuracy) {
-		case LASERMODE_DISTANCE_LOW_ACCURACY:
-			if (gpDev->ldmContinous) {
-				startmeasure_lq_continous();
-			} else {
-				startmeasure_lq_single();
-			}
-			break;
-		case LASERMODE_DISTANCE_HIGH_ACCURACY:
-			if (gpDev->ldmContinous) {
-				startmeasure_hq_continous();
-			} else {
-				startmeasure_hq_single();
-			}
-			break;
-
-		default:
-			pr_err("%s: Unknown ldm accuracy mode (%i)...\n",
-			       __func__, gpDev->ldmAccuracy);
-			break;
-		}
-		break;
-	default:
-		pr_err("%s: Unknown lasermode...\n", __func__);
-		break;
-	}
-#endif
-}
-
-void stoplaser(void)
-{
-	stopmeasure();
-}
-
-void stopmeasure(void)
-{
-	startmeasure(MSC_RAW, 0);
-}
-
-void startmeasure(int key, int value)
-{
-#if defined(CONFIG_CA111)
-	struct input_dev *button_dev = ca111_get_input_dev();
-
-	if (button_dev) {
-		input_event(button_dev, EV_MSC, key, value);
-	} else {
-		pr_err("fad %s: ca111 input_dev is NULL\n", __func__);
-	}
-#else
-	pr_err("%s: CA111 Module not loaded, no Laser Distance Meter\n",
-	       __func__);
-#endif
-}
-
-void startmeasure_hq_single(void)
-{
-	startmeasure(MSC_PULSELED, 1);
-}
-
-void startmeasure_hq_continous(void)
-{
-	startmeasure(MSC_PULSELED, 2);
-}
-
-void startmeasure_lq_single(void)
-{
-	startmeasure(MSC_GESTURE, 1);
-}
-
-void startmeasure_lq_continous(void)
-{
-	startmeasure(MSC_GESTURE, 2);
-}
-
-/**
- * setLaserMode
- *
- *
- * @param gpDev
- * @param on if set, laser is allowed, if false, turn off laser!!
- */
-void setLaserMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode)
-{
-#ifdef CONFIG_OF
-	gpDev->laserMode = pLaserMode->mode;
-	gpDev->ldmAccuracy = pLaserMode->accuracy;
-	gpDev->ldmContinous = pLaserMode->continousMeasurment;
-#endif
-}
 
 BOOL setGPSEnable(BOOL on)
 {

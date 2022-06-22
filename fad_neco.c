@@ -30,12 +30,6 @@ static DWORD setKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED * pLED);
 static DWORD getKAKALedState(PFAD_HW_INDEP_INFO gpDev, FADDEVIOCTLLED *pLED);
 static void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev,
 			     PFADDEVIOCTLDIGIO pDigioStatus);
-static void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
-static void getLaserStatus(PFAD_HW_INDEP_INFO gpDev,
-			   PFADDEVIOCTLLASER pLaserStatus);
-static void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev);
-static void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
-static BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev);
 static void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM);
 static DWORD SetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
 static DWORD GetKeypadBacklight(PFADDEVIOCTLBACKLIGHT pBacklight);
@@ -52,7 +46,6 @@ static void BspGetSubjBackLightLevel(UINT8 *pLow, UINT8 *pMedium,
 static void CleanupHW(PFAD_HW_INDEP_INFO gpDev);
 static irqreturn_t fadDigIN1IST(int irq, void *dev_id);
 int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
-void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev);
 
 // Code
 
@@ -66,12 +59,7 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pGetKAKALedState = getKAKALedState;
 	gpDev->pSetKAKALedState = setKAKALedState;
 	gpDev->pGetDigitalStatus = getDigitalStatus;
-	gpDev->pSetLaserStatus = setLaserStatus;
-	gpDev->pGetLaserStatus = getLaserStatus;
-	gpDev->pUpdateLaserOutput = updateLaserOutput;
 	gpDev->pSetBuzzerFrequency = SetBuzzerFrequency;
-	gpDev->pSetLaserActive = SetLaserActive;
-	gpDev->pGetLaserActive = GetLaserActive;
 	gpDev->pSetKeypadBacklight = SetKeypadBacklight;
 	gpDev->pGetKeypadBacklight = GetKeypadBacklight;
 	gpDev->pSetKeypadSubjBacklight = SetKeypadSubjBacklight;
@@ -85,14 +73,6 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 
 	gpDev->hI2C1 = i2c_get_adapter(1);
 	gpDev->hI2C2 = i2c_get_adapter(2);
-
-	// Laser ON
-	if (gpDev->bHasLaser) {
-		if (gpio_is_valid(LASER_ON) == 0)
-			pr_err("flirdrv-fad: LaserON can not be used\n");
-		gpio_request(LASER_ON, "LaserON");
-		gpio_direction_input(LASER_ON);
-	}
 
 	if (gpDev->bHas5VEnable) {
 		if (gpio_is_valid(PIN_3V6A_EN) == 0)
@@ -133,14 +113,6 @@ int SetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 
 	pr_debug("I2C drivers %p and %p\n", gpDev->hI2C1, gpDev->hI2C2);
 
-	//Set up Laser IRQ
-	retval = InitLaserIrq(gpDev);
-	if (retval) {
-		pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
-	} else {
-		pr_debug("Successfully requested Laser IRQ\n");
-	}
-
 	// Set up Digital I/O IRQ
 	retval = InitDigitalIOIrq(gpDev);
 	if (retval) {
@@ -160,12 +132,6 @@ void InvSetupMX6S(PFAD_HW_INDEP_INFO gpDev)
 
 void CleanupHW(PFAD_HW_INDEP_INFO gpDev)
 {
-	// Laser ON
-	if (gpDev->bHasLaser) {
-		free_irq(gpio_to_irq(LASER_ON), gpDev);
-		gpio_free(LASER_ON);
-	}
-
 	if (gpDev->bHas5VEnable) {
 		gpio_free(PIN_3V6A_EN);
 	}
@@ -241,19 +207,6 @@ void getDigitalStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLDIGIO pDigioStatus)
 	pDigioStatus->usOutputState = gpio_get_value(DIGOUT_1) ? 1 : 0;
 }
 
-void setLaserStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on)
-{
-}
-
-// Laser button has been pressed/released.
-// In software controlled laser, we must enable/disable laser here.
-void updateLaserOutput(PFAD_HW_INDEP_INFO gpDev)
-{
-}
-
-void getLaserStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus)
-{
-}
 
 BOOL setGPSEnable(BOOL on)
 {
@@ -328,15 +281,6 @@ BOOL WdogService(PFAD_HW_INDEP_INFO gpDev)
 
 #endif
 	return TRUE;
-}
-
-void SetLaserActive(PFAD_HW_INDEP_INFO gpDev, BOOL on)
-{
-}
-
-BOOL GetLaserActive(PFAD_HW_INDEP_INFO gpDev)
-{
-	return FALSE;
 }
 
 void SetBuzzerFrequency(USHORT usFreq, UCHAR ucPWM)
@@ -597,9 +541,3 @@ int InitDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
 	return ret;
 }
 
-void FreeDigitalIOIrq(PFAD_HW_INDEP_INFO gpDev)
-{
-	if (gpDev->bHasLaser) {
-		free_irq(gpio_to_irq(DIGIN_1), gpDev);
-	}
-}

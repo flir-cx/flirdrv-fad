@@ -161,4 +161,21 @@ void InvSetupMX6S(PFAD_HW_INDEP_INFO gpDev);
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev);
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev);
 
+// Function prototypes laser pointer
+int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev);
+void InvSetupLaserPointer(PFAD_HW_INDEP_INFO gpDev);
+void setLaserPointerStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+void getLaserPointerStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus);
+void updateLaserPointerOutput(PFAD_HW_INDEP_INFO gpDev);
+void SetLaserPointerActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+BOOL GetLaserPointerActive(PFAD_HW_INDEP_INFO gpDev);
+
+// Function prototypes laser distance meter
+int SetupLaserDistance(PFAD_HW_INDEP_INFO gpDev);
+void setLaserDistanceStatus(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+void getLaserDistanceStatus(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASER pLaserStatus);
+void SetLaserDistanceActive(PFAD_HW_INDEP_INFO gpDev, BOOL on);
+BOOL GetLaserDistanceActive(PFAD_HW_INDEP_INFO gpDev);
+void setLaserDistanceMode(PFAD_HW_INDEP_INFO gpDev, PFADDEVIOCTLLASERMODE pLaserMode);
+
 #endif

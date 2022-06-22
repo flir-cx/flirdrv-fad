@@ -582,6 +582,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 	//    static ULONG ulWdogTime = 5000;    // 5 seconds
 	static BOOL bGPSEnable = FALSE;
 
+
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
 		if (!gpDev->bHasLaser)
@@ -922,7 +923,7 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	    wait_event_interruptible(gpDev->wq, gpDev->eEvent != FAD_NO_EVENT);
 	if (res < 0)
 		return res;
-	*buf = gpDev->eEvent;
+	copy_to_user((void *)buf,  &gpDev->eEvent, 1);
 	gpDev->eEvent = FAD_NO_EVENT;
 	return 1;
 }

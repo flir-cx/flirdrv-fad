@@ -20,6 +20,8 @@ EXTRA_CFLAGS = -I$(ALPHAREL)/SDK/FLIR/Include -Werror
 	fad-objs += fad_neco.o
 	fad-objs += fad_roco.o
 	fad-objs += fad_ninjago.o
+	fad-objs += laser_pointer.o
+	fad-objs += laser_distance.o
 	PWD := $(shell pwd)
 
 all: 
