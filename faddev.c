@@ -468,13 +468,9 @@ static int fad_probe(struct platform_device *pdev)
 #ifdef CONFIG_OF
 	unregister_pm_notifier(&gpDev->nb);
 exit_register_pm_notifier:
-exit_sysfs_createfile_chargestate:
 #endif
 	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 exit_sysfs_create_group:
-exit_createfile_trigger_poll:
-exit_createfile_timedstandby:
-exit_createfile_fadsuspend:
 	cpu_deinitialize();
 exit_cpuinitialize:
 	misc_deregister(&fad_miscdev);
@@ -923,7 +919,10 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	    wait_event_interruptible(gpDev->wq, gpDev->eEvent != FAD_NO_EVENT);
 	if (res < 0)
 		return res;
-	copy_to_user((void *)buf,  &gpDev->eEvent, 1);
+	res = copy_to_user((void *)buf,  &gpDev->eEvent, 1);
+	if (res < 0) {
+		pr_err("FAD copy-to-user failed: %i\n", res);
+	}
 	gpDev->eEvent = FAD_NO_EVENT;
 	return 1;
 }
