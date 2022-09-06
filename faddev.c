@@ -252,6 +252,7 @@ static ssize_t chargersuspend_store(struct device *dev,
 		} else {
 			pr_err
 			    ("chargersuspend unknown command... 1/0 accepted\n");
+			ret = -EINVAL;
 		}
 	}
 	return ret;
