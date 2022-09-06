@@ -6,3 +6,9 @@ fad.mod.c
 fad.mod
 Module.symvers
 modules.order
+
+# gnu global files
+GPATH
+GRTAGS
+GSYMS
+GTAGS
