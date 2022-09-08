@@ -25,6 +25,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/reboot.h>
 #include <linux/backlight.h>
+#include <linux/kernel.h>
 #include <../drivers/base/power/power.h>
 #if KERNEL_VERSION(3, 10, 0) <= LINUX_VERSION_CODE
 #include <asm/system_info.h>
@@ -39,10 +40,16 @@ DWORD g_RestartReason = RESTART_REASON_NOT_SET;
 static int power_state = ON_STATE;
 module_param(power_state, int, 0);
 MODULE_PARM_DESC(power_state, "Camera charge state: run=2,charge=3");
-static int timed_standby;
-module_param(timed_standby, int, 0);
-MODULE_PARM_DESC(timed_standby,
-		 "If set to 1, Wake up camera after 1 minute in suspend (instead of 6 hours)");
+
+static long standby_off_timer = 360;
+module_param(standby_off_timer, long, 0);
+MODULE_PARM_DESC(standby_off_timer,
+		 "Standby-to-poweroff timer [min], must be >0");
+
+static long standby_on_timer = 0;
+module_param(standby_on_timer, long, 0);
+MODULE_PARM_DESC(standby_on_timer,
+		 "Standby-to-wakeup timer [min], overrides standby_off_timer, 0 to disable");
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long arg);
@@ -191,7 +198,7 @@ static ssize_t fadsuspend_store(struct device *dev, struct device_attribute *att
 			       (len > 0) ? *buf : ' ');
 		complete(&gpDev->standbyComplete);
 	} else
-		pr_debug("App resume\n");
+		pr_debug("FAD: App resume\n");
 
 	return sizeof(char);
 }
@@ -212,29 +219,64 @@ static ssize_t charge_state_store(struct device *dev,
 	return len;
 }
 
-static ssize_t timed_standby_show(struct device *dev, struct device_attribute *attr,
-				  char *buf)
+static ssize_t standby_off_timer_show(struct device *dev,
+				      struct device_attribute *attr,
+				      char *buf)
 {
-	if (timed_standby)
-		strcpy(buf, "on\n");
-	else
-		strcpy(buf, "off\n");
-
-	return strlen(buf);
+	return sprintf(buf, "%lu\n", standby_off_timer);
 }
 
-static ssize_t timed_standby_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t len)
+static ssize_t standby_off_timer_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t len)
 {
-	if (!strncmp(buf, "1", 1))
-		timed_standby = true;
-	else if (!strncmp(buf, "0", 1))
-		timed_standby = false;
-	else
-		return -EINVAL;
-	return len;
+	long val;
+	int ret = kstrtol(buf, 10, &val);
+	if (ret < 0) {
+		pr_err("FAD: Poweroff timer conversion error\n");
+		return ret;
+	}
+
+	if (val > 0) {
+		pr_debug("FAD: Power-off timer set to %lu minutes", val);
+		standby_off_timer = val;
+		ret = len;
+	} else {
+		pr_err("FAD: Timer value must be >0\n");
+		ret = -EINVAL;
+	}
+	return ret;
 }
+
+static ssize_t standby_on_timer_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	return sprintf(buf, "%lu\n", standby_on_timer);
+}
+
+static ssize_t standby_on_timer_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t len)
+{
+	long val;
+	int ret = kstrtol(buf, 10, &val);
+	if (ret < 0) {
+		pr_err("FAD: Wakeup timer conversion error\n");
+		return ret;
+	}
+
+	if (val >= 0) {
+		pr_debug("FAD: Wakeup timer set to %lu minutes\n", val);
+		standby_on_timer = val;
+		ret = len;
+	} else {
+		pr_err("FAD: Wakeup timer value must be >=0\n");
+		ret = -EINVAL;
+	}
+	return ret;
+}
+
 
 static ssize_t chargersuspend_store(struct device *dev,
 				    struct device_attribute *attr,
@@ -266,14 +308,16 @@ static ssize_t trigger_poll_show(struct device *dev, struct device_attribute *at
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(timed_standby, 0644, timed_standby_show, timed_standby_store);
+static DEVICE_ATTR(standby_off_timer, 0644, standby_off_timer_show, standby_off_timer_store);
+static DEVICE_ATTR(standby_on_timer, 0644, standby_on_timer_show, standby_on_timer_store);
 static DEVICE_ATTR(charge_state, 0644, charge_state_show, charge_state_store);
 static DEVICE_ATTR(fadsuspend, 0644, fadsuspend_show, fadsuspend_store);
 static DEVICE_ATTR(chargersuspend, 0644, NULL, chargersuspend_store);
 static DEVICE_ATTR(trigger_poll, 0444, trigger_poll_show, NULL);
 
 static struct attribute *faddev_sysfs_attrs[] = {
-	&dev_attr_timed_standby.attr,
+	&dev_attr_standby_off_timer.attr,
+	&dev_attr_standby_on_timer.attr,
 	&dev_attr_charge_state.attr,
 	&dev_attr_fadsuspend.attr,
 	&dev_attr_chargersuspend.attr,
@@ -295,14 +339,11 @@ int get_wake_reason(void)
 	struct wakeup_source *ws;
 
 	ws = get_suspend_wakup_source();
-
-	if (timed_standby)
-		return ON_OFF_BUTTON_WAKE;
-
 	if (!ws) {
-		pr_err("fad: No suspend wakeup source");
+		pr_err("FAD: No suspend wakeup source\n");
 		return UNKNOWN_WAKE;
 	}
+	pr_debug("FAD: Resume wakeup source '%s'\n", ws->name);
 
 	if (strstr(ws->name, "onkey"))
 		return ON_OFF_BUTTON_WAKE;
@@ -310,10 +351,15 @@ int get_wake_reason(void)
 	if (strstr(ws->name, "wake"))
 		return USB_CABLE_WAKE;
 
-	if (strstr(ws->name, "rtc") && !timed_standby) {
-		pr_err("fad: Standby shutdown\n");
-		orderly_poweroff(1);
-		return UNKNOWN_WAKE;
+	if (strstr(ws->name, "rtc")) {
+		if (!standby_on_timer) {
+			pr_info("FAD: Poweroff after %lu min standby\n", standby_off_timer);
+			orderly_poweroff(1);
+			return UNKNOWN_WAKE;
+		} else {
+			pr_info("FAD: Wakeup after %lu min standby\n", standby_on_timer);
+			return ON_OFF_BUTTON_WAKE;
+		}
 	}
 
 	pr_err("Unknown suspend wake reason");
@@ -329,7 +375,7 @@ int get_wake_reason(void)
 /** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
-	pr_err("Standby timeout\n");
+	pr_debug("FAD: Standby timeout, powering off");
 
 	// Switch of backlight as fast as possible (just activated in early resume)
 	if (gpDev->backlight) {
@@ -344,7 +390,7 @@ enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 /** Wake up camera after 1 minute in (timed) standby */
 enum alarmtimer_restart fad_standby_wakeup(struct alarm *alarm, ktime_t kt)
 {
-	pr_debug("Standby wakeup\n");
+	pr_debug("FAD: Standby wakeup, resuming");
 
 	return ALARMTIMER_NORESTART;
 }
@@ -352,40 +398,42 @@ enum alarmtimer_restart fad_standby_wakeup(struct alarm *alarm, ktime_t kt)
 static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 {
 	ktime_t kt;
+	unsigned long jifs;
 
 	switch (val) {
 	case PM_SUSPEND_PREPARE:
-		pr_debug("%s: SUSPEND %d\n", __func__, gpDev->standbyMinutes);
 
 		// Make appcore enter standby
 		power_state = SUSPEND_STATE;
 		gpDev->bSuspend = 1;
 		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
 
-		if (timed_standby) {
-			// Set a timer to wake us up in 1 minute
+		if (standby_on_timer) {
 			alarm_init(gpDev->alarm, ALARM_REALTIME,
 				   &fad_standby_wakeup);
-			kt = ktime_set(60, 0);
+			kt = ktime_set(60 * standby_on_timer, 0);
 		} else {
-			// Set a timer to wake us up in 6 hours
 			alarm_init(gpDev->alarm, ALARM_REALTIME,
 				   &fad_standby_timeout);
-			kt = ktime_set(60 * gpDev->standbyMinutes, 0);
+			kt = ktime_set(60 * standby_off_timer, 0);
 		}
+		pr_debug("FAD: SUSPEND %lu min\n", (long int)ktime_divns(kt, NSEC_PER_SEC) / 60);
 		alarm_start_relative(gpDev->alarm, kt);
 
 		// Wait for appcore
-		wait_for_completion_timeout(&gpDev->standbyComplete,
-					    msecs_to_jiffies(10000));
+		jifs = wait_for_completion_timeout(&gpDev->standbyComplete,
+						   msecs_to_jiffies(10000));
+		if (!jifs) {
+			pr_debug("FAD: Timeout waiting for standby completion\n");
+		}
 		if (gpDev->bSuspend) {
-			pr_err("Application suspend failed\n");
+			pr_err("FAD: Application suspend failed\n");
 			return NOTIFY_BAD;
 		}
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
-		pr_debug("%s: POST_SUSPEND\n", __func__);
+		pr_debug("FAD: POST_SUSPEND\n");
 		if (get_wake_reason() == USB_CABLE_WAKE)
 			power_state = USB_CHARGE_STATE;
 		else
@@ -545,6 +593,7 @@ static int __init FAD_Init(void)
 	if (retval) {
 		pr_err("flirdrv-fad: Error adding platform driver\n");
 	}
+	standby_off_timer = gpDev->standbyMinutes;
 
 	return retval;
 }
