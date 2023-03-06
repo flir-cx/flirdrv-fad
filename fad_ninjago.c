@@ -127,14 +127,20 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->bHasKAKALed) {
 		down_read(&leds_list_lock);
 		list_for_each_entry(led_cdev, &leds_list, node) {
-			if (!led_cdev->name) {
+
+			if (!led_cdev->dev) {
+				dev_err(dev, "finding KAKA leds - dev is NULL");
+				continue;
+			}
+
+			if (!led_cdev->dev->kobj.name) {
 				dev_err(dev, "finding KAKA leds - listed led name is NULL");
 				continue;
 			}
 
-			if (strcmp(led_cdev->name, "KAKA_LED2") == 0)
+			if (strcmp(led_cdev->dev->kobj.name, "KAKA_LED2") == 0)
 				gpDev->red_led_cdev = led_cdev;
-			else if (strcmp(led_cdev->name, "KAKA_LED1") == 0)
+			else if (strcmp(led_cdev->dev->kobj.name, "KAKA_LED1") == 0)
 				gpDev->blue_led_cdev = led_cdev;
 		}
 		up_read(&leds_list_lock);
