@@ -111,6 +111,7 @@ static int cpu_initialize(void)
 
 	if (of_machine_is_compatible("flir,ninjago") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec101") ||
+	    of_machine_is_compatible("fsl,imx6dl-ec701") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
 		retval = SetupMX6Platform(gpDev);
 	} else if (of_machine_is_compatible("fsl,imx6q")) {
