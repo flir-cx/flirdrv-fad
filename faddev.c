@@ -115,7 +115,7 @@ static int cpu_initialize(struct device *dev)
 			data->pDev.bHasKAKALed = TRUE;
 			retval = SetupMX6S(&data->pDev);
 		} else {
-			pr_err("Unknown System CPU\n");
+			dev_err(dev, "Unknown System CPU\n");
 			retval = -EUNKNOWNCPU;
 		}
 	return retval;
@@ -142,7 +142,7 @@ static void cpu_deinitialize(struct device *dev)
 		if (cpu_is_imx6s())
 			InvSetupMX6S(&data->pDev);
 		else
-			pr_err("Unknown System CPU\n");
+			dev_err(dev, "Unknown System CPU\n");
 }
 
 /**
@@ -189,11 +189,11 @@ static ssize_t fadsuspend_store(struct device *dev, struct device_attribute *att
 		if ((len == 1) && (*buf == '1'))
 			data->pDev.bSuspend = 0;
 		else
-			pr_err("App standby prepare fail %d %c\n", len,
+			dev_err(dev, "App standby prepare fail %d %c\n", len,
 			       (len > 0) ? *buf : ' ');
 		complete(&data->pDev.standbyComplete);
 	} else
-		pr_debug("FAD: App resume\n");
+		dev_dbg(dev, "App resume\n");
 
 	return sizeof(char);
 }
@@ -227,16 +227,16 @@ static ssize_t standby_off_timer_store(struct device *dev,
 	int ret = kstrtol(buf, 10, &val);
 
 	if (ret < 0) {
-		pr_err("FAD: Poweroff timer conversion error\n");
+		dev_err(dev, "Poweroff timer conversion error\n");
 		return ret;
 	}
 
 	if (val > 0) {
-		pr_debug("FAD: Power-off timer set to %lu minutes", val);
+		dev_dbg(dev, "Power-off timer set to %lu minutes", val);
 		standby_off_timer = val;
 		ret = len;
 	} else {
-		pr_err("FAD: Timer value must be >0\n");
+		dev_err(dev, "Timer value must be >0\n");
 		ret = -EINVAL;
 	}
 	return ret;
@@ -257,16 +257,16 @@ static ssize_t standby_on_timer_store(struct device *dev,
 	int ret = kstrtol(buf, 10, &val);
 
 	if (ret < 0) {
-		pr_err("FAD: Wakeup timer conversion error\n");
+		dev_err(dev, "Wakeup timer conversion error\n");
 		return ret;
 	}
 
 	if (val >= 0) {
-		pr_debug("FAD: Wakeup timer set to %lu minutes\n", val);
+		dev_dbg(dev, "Wakeup timer set to %lu minutes\n", val);
 		standby_on_timer = val;
 		ret = len;
 	} else {
-		pr_err("FAD: Wakeup timer value must be >=0\n");
+		dev_err(dev, "Wakeup timer value must be >=0\n");
 		ret = -EINVAL;
 	}
 	return ret;
@@ -287,7 +287,7 @@ static ssize_t chargersuspend_store(struct device *dev, struct device_attribute 
 			data->pDev.pSetChargerSuspend(&data->pDev, false);
 			ret = len;
 		} else {
-			pr_err("chargersuspend unknown command... 1/0 accepted\n");
+			dev_err(dev, "chargersuspend unknown command... 1/0 accepted\n");
 			ret = -EINVAL;
 		}
 	}
@@ -326,16 +326,16 @@ static struct attribute_group faddev_sysfs_attr_grp = {
  * Get reason camera woke from standby
  *
  */
-int get_wake_reason(void)
+int get_wake_reason(struct device *dev)
 {
 	struct wakeup_source *ws;
 
 	ws = get_suspend_wakup_source();
 	if (!ws) {
-		pr_err("FAD: No suspend wakeup source\n");
+		dev_err(dev, "No suspend wakeup source\n");
 		return UNKNOWN_WAKE;
 	}
-	pr_debug("FAD: Resume wakeup source '%s'\n", ws->name);
+	dev_dbg(dev, "Resume wakeup source '%s'\n", ws->name);
 
 	if (strstr(ws->name, "onkey"))
 		return ON_OFF_BUTTON_WAKE;
@@ -345,15 +345,15 @@ int get_wake_reason(void)
 
 	if (strstr(ws->name, "rtc")) {
 		if (!standby_on_timer) {
-			pr_info("FAD: Poweroff after %lu min standby\n", standby_off_timer);
+			dev_info(dev, "Poweroff after %lu min standby\n", standby_off_timer);
 			orderly_poweroff(1);
 			return UNKNOWN_WAKE;
 		}
-		pr_info("FAD: Wakeup after %lu min standby\n", standby_on_timer);
+		dev_info(dev, "Wakeup after %lu min standby\n", standby_on_timer);
 		return ON_OFF_BUTTON_WAKE;
 	}
 
-	pr_err("Unknown suspend wake reason");
+	dev_err(dev, "Unknown suspend wake reason");
 	return UNKNOWN_WAKE;
 }
 
@@ -367,8 +367,9 @@ int get_wake_reason(void)
 enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
 	struct faddata *data = container_of(alarm->data, struct faddata, alarm);
-
-	pr_debug("FAD: Standby timeout, powering off");
+	struct device *dev = data->dev;
+	
+	dev_dbg(dev, "Standby timeout, powering off");
 
 	// Switch of backlight as fast as possible (just activated in early resume)
 	if (data->pDev.backlight) {
@@ -383,8 +384,10 @@ enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 /** Wake up camera after 1 minute in (timed) standby */
 enum alarmtimer_restart fad_standby_wakeup(struct alarm *alarm, ktime_t kt)
 {
-	pr_debug("FAD: Standby wakeup, resuming");
+	struct faddata *data = container_of(alarm->data, struct faddata, alarm);
+	struct device *dev = data->dev;
 
+	dev_dbg(dev, "Standby wakeup, resuming");
 	return ALARMTIMER_NORESTART;
 }
 
@@ -409,24 +412,24 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 			alarm_init(&data->alarm, ALARM_REALTIME, &fad_standby_timeout);
 			kt = ktime_set(60 * standby_off_timer, 0);
 		}
-		pr_debug("FAD: SUSPEND %lu min\n", (long)ktime_divns(kt, NSEC_PER_SEC) / 60);
+		dev_dbg(dev, "SUSPEND %lu min\n", (long)ktime_divns(kt, NSEC_PER_SEC) / 60);
 		alarm_start_relative(&data->alarm, kt);
 
 		// Wait for appcore
 		jifs = wait_for_completion_timeout(&data->pDev.standbyComplete,
 						   msecs_to_jiffies(10000));
 		if (!jifs)
-			pr_debug("FAD: Timeout waiting for standby completion\n");
+			dev_dbg(dev, "Timeout waiting for standby completion\n");
 
 		if (data->pDev.bSuspend) {
-			pr_err("FAD: Application suspend failed\n");
+			dev_err(dev, "Application suspend failed\n");
 			return NOTIFY_BAD;
 		}
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
-		pr_debug("FAD: POST_SUSPEND\n");
-		if (get_wake_reason() == USB_CABLE_WAKE)
+		dev_dbg(dev, "POST_SUSPEND\n");
+		if (get_wake_reason(dev) == USB_CABLE_WAKE)
 			power_state = USB_CHARGE_STATE;
 		else
 			power_state = ON_STATE;
@@ -446,7 +449,7 @@ static int fad_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct faddata *data;
 
-	pr_debug("Probing FAD driver\n");
+	dev_dbg(dev, "Probing FAD driver\n");
 
 	data = devm_kzalloc(dev, sizeof(struct faddata), GFP_KERNEL);
 	if (!data)
@@ -463,7 +466,7 @@ static int fad_probe(struct platform_device *pdev)
 
 	ret = misc_register(&data->miscdev);
 	if (ret) {
-		pr_err("Failed to register miscdev for FAD driver\n");
+		dev_err(dev, "Failed to register miscdev for FAD driver\n");
 		goto exit;
 	}
 	// initialize this device instance
@@ -475,13 +478,13 @@ static int fad_probe(struct platform_device *pdev)
 	// Set up CPU specific stuff
 	ret = cpu_initialize(dev);
 	if (ret < 0) {
-		pr_err("flirdrv-fad: Failed to initialize CPU\n");
+		dev_err(dev, "flirdrv-fad: Failed to initialize CPU\n");
 		goto exit_cpuinitialize;
 	}
 
 	ret = sysfs_create_group(&dev->kobj, &faddev_sysfs_attr_grp);
 	if (ret) {
-		pr_err("FADDEV Error creating sysfs grp control\n");
+		dev_err(dev, "FADDEV Error creating sysfs grp control\n");
 		goto exit_sysfs_create_group;
 	}
 
@@ -490,7 +493,7 @@ static int fad_probe(struct platform_device *pdev)
 	data->nb.priority = 0;
 	ret = register_pm_notifier(&data->nb);
 	if (ret) {
-		pr_err("FADDEV Error creating sysfs grp control\n");
+		dev_err(dev, "FADDEV Error creating sysfs grp control\n");
 		goto exit_register_pm_notifier;
 	}
 #endif
@@ -825,7 +828,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		break;
 
 	default:
-		pr_err("flirdrv-fad: FAD: Unsupported IOCTL code %lX\n", Ioctl);
+		dev_err(dev, "Unsupported IOCTL code %lX\n", Ioctl);
 		retval = ERROR_NOT_SUPPORTED;
 		break;
 	}
@@ -846,35 +849,33 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
 	struct faddata *data = container_of(filep->private_data, struct faddata, miscdev);
+	struct device *dev = data->dev;
 
 	int retval = ERROR_SUCCESS;
 	char *tmp;
 
 	tmp = kzalloc(_IOC_SIZE(cmd), GFP_KERNEL);
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
-		pr_debug("flirdrv-fad: FAD Ioctl %X copy from user: %d\n", cmd,
-			 _IOC_SIZE(cmd));
+		dev_dbg(dev, "Ioctl %X copy from user: %d\n", cmd, _IOC_SIZE(cmd));
 		retval = copy_from_user(tmp, (void *)arg, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("flirdrv-fad: FAD Copy from user failed: %i\n",
-			       retval);
+			dev_err(dev, "Copy from user failed: %i\n", retval);
 	}
 
 	if (retval == ERROR_SUCCESS) {
-		pr_debug("flirdrv-fad: FAD Ioctl %X\n", cmd);
+		dev_dbg(dev, "Ioctl %X\n", cmd);
 		retval = DoIOControl(data->dev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
-			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd,
+			dev_err(dev, "Ioctl failed: %X %i %d\n", cmd,
 			       retval, _IOC_NR(cmd));
 	}
 
 	if ((retval == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ)) {
-		pr_debug("flirdrv-fad: FAD Ioctl %X copy to user: %u\n", cmd,
+		dev_dbg(dev, "Ioctl %X copy to user: %u\n", cmd,
 			 _IOC_SIZE(cmd));
 		retval = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
 		if (retval)
-			pr_err("flirdrv-fad: FAD Copy to user failed: %i\n",
-			       retval);
+			dev_err(dev, "Copy to user failed: %i\n", retval);
 	}
 	kfree(tmp);
 
@@ -911,6 +912,7 @@ static ssize_t FadRead(struct file *filep, char *buf, size_t count,
 		       loff_t *f_pos)
 {
 	struct faddata *data = container_of(filep->private_data, struct faddata, miscdev);
+	struct device *dev = data->dev;
 	int res;
 
 	if (count < 1)
@@ -920,7 +922,7 @@ static ssize_t FadRead(struct file *filep, char *buf, size_t count,
 		return res;
 	res = copy_to_user((void *)buf,  &data->pDev.eEvent, 1);
 	if (res < 0)
-		pr_err("FAD copy-to-user failed: %i\n", res);
+		dev_err(dev, "copy-to-user failed: %i\n", res);
 
 	data->pDev.eEvent = FAD_NO_EVENT;
 	return 1;
