@@ -248,7 +248,7 @@ typedef enum { TC_HANDHELD, TC_PRODUCTION, TC_IN_TC_POWER, TC_IN_TC_NOPOWER} FAD
 #elif defined(BTZCAMSIM)
 
 #define FADControl(dev, func, inbuf, sz, outbuf, outbufsz, bytesret) TRUE
-#define FADCreateHandle(path) (DHANDLE) 1
+#define FADCreateHandle(path) ((DHANDLE) 1)
 #define FADCloseHandle(hnd)
 
 // Linux device
