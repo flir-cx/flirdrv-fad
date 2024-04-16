@@ -110,11 +110,12 @@ static int cpu_initialize(struct device *dev)
 	/* 	retval = SetupMX6Q(&data->pDev); */
 	} else
 #endif
-		if (cpu_is_imx6s()) {
-			data->pDev.bHasDigitalIO = TRUE;
-			data->pDev.bHasKAKALed = TRUE;
-			retval = SetupMX6S(&data->pDev);
-		} else {
+		/* if (cpu_is_imx6s()) { */
+		/* 	data->pDev.bHasDigitalIO = TRUE; */
+		/* 	data->pDev.bHasKAKALed = TRUE; */
+		/* 	retval = SetupMX6S(&data->pDev); */
+		/* } else */
+		{
 			dev_err(dev, "Unknown System CPU\n");
 			retval = -EUNKNOWNCPU;
 		}
@@ -139,9 +140,9 @@ static void cpu_deinitialize(struct device *dev)
 	/* 	InvSetupMX6Q(&data->pDev); */
 	} else
 #endif
-		if (cpu_is_imx6s())
-			InvSetupMX6S(&data->pDev);
-		else
+		/* if (cpu_is_imx6s()) */
+		/* 	InvSetupMX6S(&data->pDev); */
+		/* else */
 			dev_err(dev, "Unknown System CPU\n");
 }
 
