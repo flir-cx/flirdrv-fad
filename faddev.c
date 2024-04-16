@@ -56,11 +56,6 @@ static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long ar
 static unsigned int FadPoll(struct file *filep, poll_table *pt);
 static ssize_t FadRead(struct file *filep, char __user *buf, size_t count, loff_t *f_pos);
 
-// gpDev is global, which is generally undesired, we can fix this
-// in fad_probe, platform_set_drvdata sets gpDev as the driverdata,
-// if we have the device, we can get the platform with to_platform_device
-static PFAD_HW_INDEP_INFO gpDev;
-
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 //Workaround to allow 3.14 kernel to work...
 struct platform_device *pdev;
@@ -458,7 +453,6 @@ static int fad_probe(struct platform_device *pdev)
 	data = devm_kzalloc(dev, sizeof(struct faddata), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
-	gpDev = &data->pDev;
 	data->miscdev.minor = MISC_DYNAMIC_MINOR;
 	data->miscdev.name = devm_kasprintf(dev, GFP_KERNEL, "fad0");
 	data->miscdev.fops = &fad_fops;
