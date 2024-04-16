@@ -47,7 +47,6 @@ struct alarm;
 // Internal variable
 typedef struct __FAD_HW_INDEP_INFO {
 	struct platform_device *pLinuxDevice;
-	struct notifier_block nb;
 	struct semaphore semDevice;	// serialize access to this device's state
 	struct i2c_adapter *hI2C1;
 	struct i2c_adapter *hI2C2;
@@ -143,6 +142,7 @@ struct faddata {
 	struct device *dev;
 	FAD_HW_INDEP_INFO pDev;
 	struct alarm alarm;
+	struct notifier_block nb;
 };
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)

@@ -399,8 +399,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 {
 	ktime_t kt;
 	unsigned long jifs;
-	struct platform_device *pdev = gpDev->pLinuxDevice;
-	struct faddata *data = platform_get_drvdata(pdev);
+	struct faddata *data = container_of(nb, struct faddata, nb);
 	struct device *dev = data->dev;
 	
 	switch (val) {
@@ -495,9 +494,9 @@ static int fad_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_OF
-	data->pDev.nb.notifier_call = fad_notify;
-	data->pDev.nb.priority = 0;
-	ret = register_pm_notifier(&data->pDev.nb);
+	data->nb.notifier_call = fad_notify;
+	data->nb.priority = 0;
+	ret = register_pm_notifier(&data->nb);
 	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_register_pm_notifier;
@@ -508,7 +507,7 @@ static int fad_probe(struct platform_device *pdev)
 	return ret;
 
 #ifdef CONFIG_OF
-	unregister_pm_notifier(&data->pDev.nb);
+	unregister_pm_notifier(&data->nb);
 exit_register_pm_notifier:
 #endif
 	sysfs_remove_group(&dev->kobj, &faddev_sysfs_attr_grp);
@@ -527,7 +526,7 @@ static int fad_remove(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "Removing FAD driver\n");
 #ifdef CONFIG_OF
-	unregister_pm_notifier(&data->pDev.nb);
+	unregister_pm_notifier(&data->nb);
 #endif
 	sysfs_remove_group(&dev->kobj, &faddev_sysfs_attr_grp);
 	cpu_deinitialize(dev);
