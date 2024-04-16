@@ -98,20 +98,20 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pUpdateLaserOutput = updateLaserPointerOutput;
 	gpDev->pSetLaserActive = SetLaserPointerActive;
 	gpDev->pGetLaserActive = GetLaserPointerActive;
-
+	struct device *dev = &gpDev->pLinuxDevice->dev;
 
 #ifdef CONFIG_OF
 
 	/* Configure devices (bools) from DT */
-	of_property_read_u32_index(gpDev->node, "hasLaser", 0,
+	of_property_read_u32_index(dev->of_node, "hasLaser", 0,
 				   &gpDev->bHasLaser);
-	of_property_read_u32_index(gpDev->node, "HasSoftwareControlledLaser", 0,
+	of_property_read_u32_index(dev->of_node, "HasSoftwareControlledLaser", 0,
 				   &gpDev->bHasSoftwareControlledLaser);
 
 	if (gpDev->bHasLaser) {
 		int pin;
 		pin =
-		    of_get_named_gpio_flags(gpDev->node, "laser_on-gpios", 0,
+		    of_get_named_gpio_flags(dev->of_node, "laser_on-gpios", 0,
 					    NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: LaserON can not be used\n");
@@ -129,7 +129,7 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 		}
 
 		pin =
-		    of_get_named_gpio_flags(gpDev->node, "laser_soft-gpios", 0,
+		    of_get_named_gpio_flags(dev->of_node, "laser_soft-gpios", 0,
 					    NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Laser Soft On can not be used\n");
@@ -146,7 +146,7 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 		}
 
 		pin =
-		    of_get_named_gpio_flags(gpDev->node, "laser_switch-gpios",
+		    of_get_named_gpio_flags(dev->of_node, "laser_switch-gpios",
 					    0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Laser Switch can not be used\n");

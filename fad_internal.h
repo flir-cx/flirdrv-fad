@@ -64,7 +64,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 	wait_queue_head_t wq;
 
 #ifdef CONFIG_OF
-	struct device_node *node;
 	int laser_on_gpio;
 	int laser_soft_gpio;
 	int laser_switch_gpio;

@@ -62,7 +62,6 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	struct led_classdev *led_cdev;
 	struct device *dev = &gpDev->pLinuxDevice->dev;
 
-	gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
 #endif
 
 	gpDev->pGetLedState = getLedState;
@@ -81,11 +80,11 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	//Do not care about return value of function
 	//If property is missing, assume device doesnt exist!
 	//Better to wrap this in separate function... (int -> bool etc...)
-	of_property_read_u32_index(gpDev->node, "hasLaser", 0, &gpDev->bHasLaser);
-	of_property_read_u32_index(gpDev->node, "hasGPS", 0, &gpDev->bHasGPS);
-	of_property_read_u32_index(gpDev->node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
-	of_property_read_u32_index(gpDev->node, "hasTrigger", 0, &gpDev->bHasTrigger);
-	of_property_read_u32_index(gpDev->node, "HasKAKALed", 0,&gpDev->bHasKAKALed);
+	of_property_read_u32_index(dev->of_node, "hasLaser", 0, &gpDev->bHasLaser);
+	of_property_read_u32_index(dev->of_node, "hasGPS", 0, &gpDev->bHasGPS);
+	of_property_read_u32_index(dev->of_node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
+	of_property_read_u32_index(dev->of_node, "hasTrigger", 0, &gpDev->bHasTrigger);
+	of_property_read_u32_index(dev->of_node, "HasKAKALed", 0,&gpDev->bHasKAKALed);
 
 	// Determine what laser device to use
 	if (gpDev->bHasLaser) {
@@ -120,8 +119,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = SetMotorSleepRegulator(gpDev, true);
 
-	of_property_read_u32(gpDev->node, "standbyMinutes", &gpDev->standbyMinutes);
-	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(gpDev->node, "backlight", 0));
+	of_property_read_u32(dev->of_node, "standbyMinutes", &gpDev->standbyMinutes);
+	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(dev->of_node, "backlight", 0));
 
 	// Find LEDs
 	if (gpDev->bHasKAKALed) {
@@ -149,7 +148,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->bHasDigitalIO) {
 		int pin;
 
-		pin = of_get_named_gpio_flags(gpDev->node, "digin0-gpios", 0, NULL);
+		pin = of_get_named_gpio_flags(dev->of_node, "digin0-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: DigIN0 can not be used\n");
 		} else {
@@ -157,7 +156,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 			gpio_request(pin, "DigIN0");
 			gpio_direction_input(pin);
 		}
-		pin = of_get_named_gpio_flags(gpDev->node, "digin1-gpios", 0, NULL);
+		pin = of_get_named_gpio_flags(dev->of_node, "digin1-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: DigIN1 can not be used\n");
 		} else {
@@ -169,7 +168,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasTrigger) {
 		int pin;
-		pin = of_get_named_gpio_flags(gpDev->node, "trigger-gpio", 0, NULL);
+		pin = of_get_named_gpio_flags(dev->of_node, "trigger-gpio", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Trigger can not be used\n");
 		} else {

@@ -105,9 +105,9 @@ static int cpu_initialize(struct device *dev)
 	    of_machine_is_compatible("fsl,imx6dl-ec701") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
 		retval = SetupMX6Platform(&data->pDev);
-	} else if (of_machine_is_compatible("fsl,imx6q")) {
-		data->pDev.node = of_find_compatible_node(NULL, NULL, "flir,fad");
-		retval = SetupMX6Q(&data->pDev);
+	/* } else if (of_machine_is_compatible("fsl,imx6q")) { */
+	/* 	data->pDev.node = of_find_compatible_node(NULL, NULL, "flir,fad"); */
+	/* 	retval = SetupMX6Q(&data->pDev); */
 	} else
 #endif
 		if (cpu_is_imx6s()) {
@@ -134,9 +134,9 @@ static void cpu_deinitialize(struct device *dev)
 	    of_machine_is_compatible("fsl,imx6dl-ec101") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
 		InvSetupMX6Platform(&data->pDev);
-	} else if (of_machine_is_compatible("fsl,imx6q")) {
-		of_node_put(data->pDev.node);
-		InvSetupMX6Q(&data->pDev);
+	/* } else if (of_machine_is_compatible("fsl,imx6q")) { */
+	/* 	of_node_put(data->pDev.node); */
+	/* 	InvSetupMX6Q(&data->pDev); */
 	} else
 #endif
 		if (cpu_is_imx6s())
