@@ -49,7 +49,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 	struct platform_device *pLinuxDevice;
 	struct notifier_block nb;
 	struct semaphore semDevice;	// serialize access to this device's state
-	struct semaphore semIOport;
 	struct i2c_adapter *hI2C1;
 	struct i2c_adapter *hI2C2;
 	struct completion standbyComplete;
@@ -145,13 +144,6 @@ struct faddata {
 	struct device *dev;
 	FAD_HW_INDEP_INFO pDev;
 };
-
-// Driver serialization macros
-#define	LOCK(pd)			down(&pd->semDevice)
-#define	UNLOCK(pd)			up(&pd->semDevice)
-
-#define	LOCK_IOPORT(pd)		down(&pd->semIOport)
-#define	UNLOCK_IOPORT(pd)	up(&pd->semIOport)
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)
 int InitLaserIrq(PFAD_HW_INDEP_INFO gpDev);

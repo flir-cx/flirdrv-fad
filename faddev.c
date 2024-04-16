@@ -487,7 +487,6 @@ static int fad_probe(struct platform_device *pdev)
 	}
 	// initialize this device instance
 	sema_init(&data->pDev.semDevice, 1);
-	sema_init(&data->pDev.semIOport, 1);
 
 	// init wait queue
 	init_waitqueue_head(&data->pDev.wq);
@@ -607,11 +606,11 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.bLaserEnable = ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
 			data->pDev.pSetLaserStatus(&data->pDev, data->pDev.bLaserEnable);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -619,10 +618,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pGetLaserStatus(&data->pDev, (PFADDEVIOCTLLASER) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -645,7 +644,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		else {
 			FADDEVIOCTLBUZZER *pBuzzerData =
 			    (FADDEVIOCTLBUZZER *) pBuf;
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			if ((pBuzzerData->eState == BUZZER_ON) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
 				// Activate sound
@@ -653,16 +652,16 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 							   pBuzzerData->ucPWM);
 			}
 			if (pBuzzerData->eState == BUZZER_TIME) {
-				UNLOCK(gpDev);
+				up(&data->pDev.semDevice);
 				msleep(pBuzzerData->usTime);
-				LOCK(gpDev);
+				down(&data->pDev.semDevice);
 			}
 			if ((pBuzzerData->eState == BUZZER_OFF) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
 				// Switch off sound
 				data->pDev.pSetBuzzerFrequency(0, 0);
 			}
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 			retval = ERROR_SUCCESS;
 		}
 		break;
@@ -671,11 +670,11 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasDigitalIO)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pGetDigitalStatus(&data->pDev,
 						 (PFADDEVIOCTLDIGIO) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -683,10 +682,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pGetLedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -694,10 +693,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pSetLedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -705,10 +704,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pGetKAKALedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -716,10 +715,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pSetKAKALedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -727,11 +726,11 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasGPS)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pSetGPSEnable(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled);
 			bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -739,10 +738,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasGPS)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pGetGPSEnable(&(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled));
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -750,12 +749,12 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			data->pDev.pSetLaserActive(&data->pDev,
 					       ((FADDEVIOCTLLASERACTIVE *)
 						pBuf)->bLaserActive == TRUE);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
@@ -763,11 +762,11 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			LOCK(gpDev);
+			down(&data->pDev.semDevice);
 			((FADDEVIOCTLLASERACTIVE *) pBuf)->bLaserActive =
 			    data->pDev.pGetLaserActive(&data->pDev);
 			retval = ERROR_SUCCESS;
-			UNLOCK(gpDev);
+			up(&data->pDev.semDevice);
 		}
 		break;
 
