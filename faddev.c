@@ -212,15 +212,13 @@ static ssize_t charge_state_store(struct device *dev, struct device_attribute *a
 	return len;
 }
 
-static ssize_t standby_off_timer_show(struct device *dev,
-				      struct device_attribute *attr,
+static ssize_t standby_off_timer_show(struct device *dev, struct device_attribute *attr,
 				      char *buf)
 {
 	return sprintf(buf, "%lu\n", standby_off_timer);
 }
 
-static ssize_t standby_off_timer_store(struct device *dev,
-				       struct device_attribute *attr,
+static ssize_t standby_off_timer_store(struct device *dev, struct device_attribute *attr,
 				       const char *buf, size_t len)
 {
 	long val;
@@ -242,15 +240,13 @@ static ssize_t standby_off_timer_store(struct device *dev,
 	return ret;
 }
 
-static ssize_t standby_on_timer_show(struct device *dev,
-				     struct device_attribute *attr,
+static ssize_t standby_on_timer_show(struct device *dev, struct device_attribute *attr,
 				     char *buf)
 {
 	return sprintf(buf, "%lu\n", standby_on_timer);
 }
 
-static ssize_t standby_on_timer_store(struct device *dev,
-				      struct device_attribute *attr,
+static ssize_t standby_on_timer_store(struct device *dev, struct device_attribute *attr,
 				      const char *buf, size_t len)
 {
 	long val;
@@ -535,7 +531,6 @@ static int fad_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (data->pDev.suspend)
 		data->pDev.suspend(&data->pDev);
-
 	return 0;
 }
 
@@ -554,7 +549,6 @@ static void fad_shutdown(struct platform_device *pdev)
 
 	if (data->pDev.suspend)
 		data->pDev.suspend(&data->pDev);
-
 }
 
 static struct platform_driver fad_driver = {
@@ -576,9 +570,8 @@ static struct platform_driver fad_driver = {
 static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
 	struct faddata *data = dev_get_drvdata(dev);
-	int retval;
-	//    static ULONG ulWdogTime = 5000;    // 5 seconds
 	static BOOL bGPSEnable = FALSE;
+	int retval;
 
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
@@ -621,8 +614,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasBuzzer)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			FADDEVIOCTLBUZZER *pBuzzerData =
-			    (FADDEVIOCTLBUZZER *) pBuf;
+			FADDEVIOCTLBUZZER *pBuzzerData = (FADDEVIOCTLBUZZER *) pBuf;
 			down(&data->pDev.semDevice);
 			if ((pBuzzerData->eState == BUZZER_ON) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
@@ -635,10 +627,9 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 				msleep(pBuzzerData->usTime);
 				down(&data->pDev.semDevice);
 			}
-			if ((pBuzzerData->eState == BUZZER_OFF) ||
+			if ((pBuzzerData->eState == BUZZER_OFF) || 
 			    (pBuzzerData->eState == BUZZER_TIME)) {
-				// Switch off sound
-				data->pDev.pSetBuzzerFrequency(0, 0);
+				data->pDev.pSetBuzzerFrequency(0, 0); // Switch off sound
 			}
 			up(&data->pDev.semDevice);
 			retval = ERROR_SUCCESS;
@@ -650,8 +641,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			down(&data->pDev.semDevice);
-			data->pDev.pGetDigitalStatus(&data->pDev,
-						 (PFADDEVIOCTLDIGIO) pBuf);
+			data->pDev.pGetDigitalStatus(&data->pDev, (PFADDEVIOCTLDIGIO) pBuf);
 			retval = ERROR_SUCCESS;
 			up(&data->pDev.semDevice);
 		}
@@ -730,8 +720,8 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		else {
 			down(&data->pDev.semDevice);
 			data->pDev.pSetLaserActive(&data->pDev,
-					       ((FADDEVIOCTLLASERACTIVE *)
-						pBuf)->bLaserActive == TRUE);
+						   ((FADDEVIOCTLLASERACTIVE *)
+						    pBuf)->bLaserActive == TRUE);
 			retval = ERROR_SUCCESS;
 			up(&data->pDev.semDevice);
 		}
@@ -743,7 +733,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		else {
 			down(&data->pDev.semDevice);
 			((FADDEVIOCTLLASERACTIVE *) pBuf)->bLaserActive =
-			    data->pDev.pGetLaserActive(&data->pDev);
+				data->pDev.pGetLaserActive(&data->pDev);
 			retval = ERROR_SUCCESS;
 			up(&data->pDev.semDevice);
 		}
@@ -765,9 +755,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			retval =
-			    data->pDev.pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
-						       pBuf);
+			retval = data->pDev.pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
 		break;
 
@@ -775,9 +763,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			retval =
-			    data->pDev.pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
-						       pBuf);
+			retval = data->pDev.pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *) pBuf);
 		}
 		break;
 
@@ -785,10 +771,8 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			retval =
-			    data->pDev.pGetKeypadSubjBacklight(&data->pDev,
-							   (FADDEVIOCTLSUBJBACKLIGHT
-							    *) pBuf);
+			retval = data->pDev.pGetKeypadSubjBacklight(
+				&data->pDev, (FADDEVIOCTLSUBJBACKLIGHT *)pBuf);
 		}
 		break;
 
@@ -796,10 +780,8 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
-			retval =
-			    data->pDev.pSetKeypadSubjBacklight(&data->pDev,
-							   (FADDEVIOCTLSUBJBACKLIGHT
-							    *) pBuf);
+			retval = data->pDev.pSetKeypadSubjBacklight(
+				&data->pDev, (FADDEVIOCTLSUBJBACKLIGHT *)pBuf);
 		}
 		break;
 
@@ -810,8 +792,7 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
 
 	case IOCTL_FAD_GET_SECURITY_PARAMS:
 		{
-			PFADDEVIOCTLSECURITY pSecurity =
-			    (PFADDEVIOCTLSECURITY) pBuf;
+			PFADDEVIOCTLSECURITY pSecurity = (PFADDEVIOCTLSECURITY)pBuf;
 			pSecurity->ulVersion = INITIAL_VERSION;
 			pSecurity->ullUniqueID = system_serial_high;
 			pSecurity->ullUniqueID <<= 32;
@@ -866,13 +847,11 @@ static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long ar
 		dev_dbg(dev, "Ioctl %X\n", cmd);
 		retval = DoIOControl(data->dev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
-			dev_err(dev, "Ioctl failed: %X %i %d\n", cmd,
-			       retval, _IOC_NR(cmd));
+			dev_err(dev, "Ioctl failed: %X %i %d\n", cmd, retval, _IOC_NR(cmd));
 	}
 
 	if ((retval == ERROR_SUCCESS) && (_IOC_DIR(cmd) & _IOC_READ)) {
-		dev_dbg(dev, "Ioctl %X copy to user: %u\n", cmd,
-			 _IOC_SIZE(cmd));
+		dev_dbg(dev, "Ioctl %X copy to user: %u\n", cmd, _IOC_SIZE(cmd));
 		retval = copy_to_user((void *)arg, tmp, _IOC_SIZE(cmd));
 		if (retval)
 			dev_err(dev, "Copy to user failed: %i\n", retval);
