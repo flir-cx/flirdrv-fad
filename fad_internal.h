@@ -59,7 +59,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 	UINT8 Keypad_bl_high;
 	struct led_classdev *red_led_cdev;
 	struct led_classdev *blue_led_cdev;
-	struct alarm *alarm;
 
 	// Wait for IRQ variables
 	FAD_EVENT_E eEvent;
@@ -143,6 +142,7 @@ struct faddata {
 	struct miscdevice miscdev;
 	struct device *dev;
 	FAD_HW_INDEP_INFO pDev;
+	struct alarm alarm;
 };
 
 // Function prototypes - fad_irq.c (Input pin interrupt handling)

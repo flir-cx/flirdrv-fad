@@ -373,8 +373,8 @@ int get_wake_reason(void)
 /** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
-	struct platform_device *pdev = gpDev->pLinuxDevice;
-	struct faddata *data = platform_get_drvdata(pdev);
+//	struct platform_device *pdev = gpDev->pLinuxDevice;
+	struct faddata *data = container_of(alarm->data, struct faddata, alarm);
 
 	pr_debug("FAD: Standby timeout, powering off");
 
@@ -412,14 +412,14 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		sysfs_notify(&dev->kobj, "control", "fadsuspend");
 
 		if (standby_on_timer) {
-			alarm_init(data->pDev.alarm, ALARM_REALTIME, &fad_standby_wakeup);
+			alarm_init(&data->alarm, ALARM_REALTIME, &fad_standby_wakeup);
 			kt = ktime_set(60 * standby_on_timer, 0);
 		} else {
-			alarm_init(data->pDev.alarm, ALARM_REALTIME, &fad_standby_timeout);
+			alarm_init(&data->alarm, ALARM_REALTIME, &fad_standby_timeout);
 			kt = ktime_set(60 * standby_off_timer, 0);
 		}
 		pr_debug("FAD: SUSPEND %lu min\n", (long int)ktime_divns(kt, NSEC_PER_SEC) / 60);
-		alarm_start_relative(data->pDev.alarm, kt);
+		alarm_start_relative(&data->alarm, kt);
 
 		// Wait for appcore
 		jifs = wait_for_completion_timeout(&data->pDev.standbyComplete,
@@ -441,7 +441,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 			power_state = ON_STATE;
 
 		data->pDev.bSuspend = 0;
-		alarm_cancel(data->pDev.alarm);
+		alarm_cancel(&data->alarm);
 		sysfs_notify(&dev->kobj, "control", "fadsuspend");
 		return NOTIFY_OK;
 	}
@@ -469,15 +469,6 @@ static int fad_probe(struct platform_device *pdev)
 	data->dev = dev;
 	dev_set_drvdata(dev, data);
 	platform_set_drvdata(pdev, data);
-
-	data->pDev.alarm = devm_kzalloc(dev, sizeof(struct alarm), GFP_KERNEL);
-	if (!data->pDev.alarm) {
-		ret = -ENOMEM;
-		pr_err
-		    ("flirdrv-fad: Error allocating memory for data->pDev.alarm, FAD_Init failed\n");
-		goto exit;
-	}
-
 	data->pDev.pLinuxDevice = pdev;
 
 	ret = misc_register(&data->miscdev);
