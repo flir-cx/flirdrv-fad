@@ -53,8 +53,8 @@ MODULE_PARM_DESC(standby_on_timer,
 
 // Function prototypes
 static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long arg);
-static unsigned int FadPoll(struct file *filp, poll_table *pt);
-static ssize_t FadRead(struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
+static unsigned int FadPoll(struct file *filep, poll_table *pt);
+static ssize_t FadRead(struct file *filep, char __user *buf, size_t count, loff_t *f_pos);
 
 // gpDev is global, which is generally undesired, we can fix this
 // in fad_probe, platform_set_drvdata sets gpDev as the driverdata,
@@ -373,7 +373,6 @@ int get_wake_reason(void)
 /** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
-//	struct platform_device *pdev = gpDev->pLinuxDevice;
 	struct faddata *data = container_of(alarm->data, struct faddata, alarm);
 
 	pr_debug("FAD: Standby timeout, powering off");
@@ -903,13 +902,11 @@ static long FAD_IOControl(struct file *filep,
  *
  * @return
  */
-static unsigned int FadPoll(struct file *filp, poll_table *pt)
+static unsigned int FadPoll(struct file *filep, poll_table *pt)
 {
-	struct platform_device *pdev = gpDev->pLinuxDevice;
-	struct faddata *data = platform_get_drvdata(pdev);
+	struct faddata *data = container_of(filep->private_data, struct faddata, miscdev);
 	
-	poll_wait(filp, &data->pDev.wq, pt);
-
+	poll_wait(filep, &data->pDev.wq, pt);
 	return (data->pDev.eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
 
@@ -923,18 +920,15 @@ static unsigned int FadPoll(struct file *filp, poll_table *pt)
  *
  * @return
  */
-static ssize_t FadRead(struct file *filp, char *buf, size_t count,
+static ssize_t FadRead(struct file *filep, char *buf, size_t count,
 		       loff_t *f_pos)
 {
-	struct platform_device *pdev = gpDev->pLinuxDevice;
-	struct faddata *data = platform_get_drvdata(pdev);
-
+	struct faddata *data = container_of(filep->private_data, struct faddata, miscdev);
 	int res;
 
 	if (count < 1)
 		return -EINVAL;
-	res =
-	    wait_event_interruptible(data->pDev.wq, data->pDev.eEvent != FAD_NO_EVENT);
+	res = wait_event_interruptible(data->pDev.wq, data->pDev.eEvent != FAD_NO_EVENT);
 	if (res < 0)
 		return res;
 	res = copy_to_user((void *)buf,  &data->pDev.eEvent, 1);
