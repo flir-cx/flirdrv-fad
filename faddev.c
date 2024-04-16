@@ -512,7 +512,7 @@ static int fad_probe(struct platform_device *pdev)
 	}
 #endif
 	init_completion(&gpDev->standbyComplete);
-
+	standby_off_timer = gpDev->standbyMinutes;	
 	return ret;
 
 #ifdef CONFIG_OF
@@ -574,44 +574,6 @@ static struct platform_driver fad_driver = {
 		   .owner = THIS_MODULE,
 		    },
 };
-
-/**
- * FAD_Init
- * Initializes FAD
- *
- *
- * @return
- */
-static int __init FAD_Init(void)
-{
-	int retval;
-
-#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
-	pdev = platform_device_alloc("fad", 1);
-	platform_device_add(pdev);
-#endif
-	retval = platform_driver_register(&fad_driver);
-	if (retval) {
-		pr_err("flirdrv-fad: Error adding platform driver\n");
-	}
-	standby_off_timer = gpDev->standbyMinutes;
-
-	return retval;
-}
-
-/**
- * FAD_Deinit
- * Cleanup after FAD Init on module unload
- *
- * @return
- */
-static void __exit FAD_Deinit(void)
-{
-#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
-	platform_device_del(pdev);
-#endif
-	platform_driver_unregister(&fad_driver);
-}
 
 /**
  * DOIOControl
@@ -978,8 +940,7 @@ static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 	return 1;
 }
 
-module_init(FAD_Init);
-module_exit(FAD_Deinit);
+module_platform_driver(fad_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("FLIR Application Driver");
