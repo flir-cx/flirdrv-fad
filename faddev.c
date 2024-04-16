@@ -458,7 +458,6 @@ static int fad_probe(struct platform_device *pdev)
 	data->dev = dev;
 	dev_set_drvdata(dev, data);
 	platform_set_drvdata(pdev, data);
-	data->pDev.pLinuxDevice = pdev;
 
 	ret = misc_register(&data->miscdev);
 	if (ret) {

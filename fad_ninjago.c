@@ -60,8 +60,8 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	extern struct list_head leds_list;
 	extern struct rw_semaphore leds_list_lock;
 	struct led_classdev *led_cdev;
-	struct device *dev = &gpDev->pLinuxDevice->dev;
-
+	struct faddata *data = container_of(gpDev, struct faddata, pDev);
+	struct device *dev = data->dev;
 #endif
 
 	gpDev->pGetLedState = getLedState;

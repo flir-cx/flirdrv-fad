@@ -104,12 +104,14 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 
 irqreturn_t fadTriggerIST(int irq, void *dev_id)
 {
-	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
+	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO)dev_id;
+	struct faddata *data = container_of(dev_id, struct faddata, pDev);
+	struct device *dev = data->dev;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
-	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "trigger_poll");
+	sysfs_notify(&dev->kobj, NULL, "trigger_poll");
 #else
-	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "trigger_poll");
+	sysfs_notify(&dev->kobj, "control", "trigger_poll");
 #endif
 	return IRQ_HANDLED;
 }

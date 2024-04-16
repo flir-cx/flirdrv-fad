@@ -98,7 +98,8 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 	gpDev->pUpdateLaserOutput = updateLaserPointerOutput;
 	gpDev->pSetLaserActive = SetLaserPointerActive;
 	gpDev->pGetLaserActive = GetLaserPointerActive;
-	struct device *dev = &gpDev->pLinuxDevice->dev;
+	struct faddata *data = container_of(gpDev, struct faddata, pDev);
+	struct device *dev = data->dev;
 
 #ifdef CONFIG_OF
 
