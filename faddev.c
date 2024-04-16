@@ -577,12 +577,6 @@ static struct platform_driver fad_driver = {
 /**
  * DOIOControl
  *
- * @param gpDev
- * @param Ioctl
- * @param pBuf
- * @param pUserBuf
- *
- * @return
  */
 static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
@@ -857,9 +851,10 @@ static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUse
  *
  * @return
  */
-static long FAD_IOControl(struct file *filep,
-			  unsigned int cmd, unsigned long arg)
+static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long arg)
 {
+	struct faddata *data = container_of(filep->private_data, struct faddata, miscdev);
+
 	int retval = ERROR_SUCCESS;
 	char *tmp;
 
@@ -875,7 +870,7 @@ static long FAD_IOControl(struct file *filep,
 
 	if (retval == ERROR_SUCCESS) {
 		pr_debug("flirdrv-fad: FAD Ioctl %X\n", cmd);
-		retval = DoIOControl(&gpDev->pLinuxDevice->dev, cmd, tmp, (PUCHAR) arg);
+		retval = DoIOControl(data->dev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
 			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd,
 			       retval, _IOC_NR(cmd));
