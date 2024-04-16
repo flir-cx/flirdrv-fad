@@ -73,12 +73,6 @@ static const struct file_operations fad_fops = {
 	.poll = FadPoll,
 };
 
-static struct miscdevice fad_miscdev = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "fad0",
-	.fops = &fad_fops
-};
-
 #if (KERNEL_VERSION(3, 14, 0) <= LINUX_VERSION_CODE && KERNEL_VERSION(3, 15, 0) > LINUX_VERSION_CODE) || (KERNEL_VERSION(5, 10, 0) <= LINUX_VERSION_CODE)
 
 // get_suspend_wakup_source is implemented in evander/lennox 3.14.x & 5.10.y kernels
@@ -403,7 +397,6 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 
 	switch (val) {
 	case PM_SUSPEND_PREPARE:
-
 		// Make appcore enter standby
 		power_state = SUSPEND_STATE;
 		gpDev->bSuspend = 1;
@@ -452,20 +445,24 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 static int fad_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct device *dev = &pdev->dev;
+	struct faddata *data;
 
 	pr_debug("Probing FAD driver\n");
 
-	/* Allocate (and zero-initiate) our control structure. */
-	gpDev =
-	    (PFAD_HW_INDEP_INFO) devm_kzalloc(&pdev->dev,
-					      sizeof(FAD_HW_INDEP_INFO),
-					      GFP_KERNEL);
-	if (!gpDev) {
-		ret = -ENOMEM;
-		pr_err
-		    ("flirdrv-fad: Error allocating memory for pDev, FAD_Init failed\n");
-		goto exit;
-	}
+	data = devm_kzalloc(dev, sizeof(struct faddata), GFP_KERNEL);
+	if (!data)
+		return -ENOMEM;
+	gpDev = &data->pDev;
+	data->miscdev.minor = MISC_DYNAMIC_MINOR;
+	data->miscdev.name = devm_kasprintf(dev, GFP_KERNEL, "fad0");
+	data->miscdev.fops = &fad_fops;
+	data->miscdev.parent = dev;
+
+	data->dev = dev;
+	dev_set_drvdata(dev, data);
+	platform_set_drvdata(pdev, data);
+
 	gpDev->alarm = devm_kzalloc(&pdev->dev, sizeof(struct alarm),
 					 GFP_KERNEL);
 	if (!gpDev->alarm) {
@@ -476,8 +473,8 @@ static int fad_probe(struct platform_device *pdev)
 	}
 
 	gpDev->pLinuxDevice = pdev;
-	platform_set_drvdata(pdev, gpDev);
-	ret = misc_register(&fad_miscdev);
+
+	ret = misc_register(&data->miscdev);
 	if (ret) {
 		pr_err("Failed to register miscdev for FAD driver\n");
 		goto exit;
@@ -523,20 +520,22 @@ exit_register_pm_notifier:
 exit_sysfs_create_group:
 	cpu_deinitialize();
 exit_cpuinitialize:
-	misc_deregister(&fad_miscdev);
+	misc_deregister(&data->miscdev);
 exit:
 	return ret;
 }
 
 static int fad_remove(struct platform_device *pdev)
 {
-	pr_debug("Removing FAD driver\n");
+	struct faddata *data = platform_get_drvdata(pdev);
+
+	dev_dbg(&pdev->dev, "Removing FAD driver\n");
 #ifdef CONFIG_OF
 	unregister_pm_notifier(&gpDev->nb);
 #endif
 	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
 	cpu_deinitialize();
-	misc_deregister(&fad_miscdev);
+	misc_deregister(&data->miscdev);
 	return 0;
 }
 

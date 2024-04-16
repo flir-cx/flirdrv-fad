@@ -12,6 +12,9 @@
 #ifndef FAD_INTERNAL_H
 #define FAD_INTERNAL_H
 
+
+#include <linux/miscdevice.h>
+
 enum {
 	RESTART_REASON_NOT_SET = 0x00,
 	RESTART_REASON_COLDSTART = 0x01,
@@ -136,6 +139,12 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int (*suspend)(struct __FAD_HW_INDEP_INFO *gpDev);
 	int (*resume)(struct __FAD_HW_INDEP_INFO *gpDev);
 } FAD_HW_INDEP_INFO, *PFAD_HW_INDEP_INFO;
+
+struct faddata {
+	struct miscdevice miscdev;
+	struct device *dev;
+	FAD_HW_INDEP_INFO pDev;
+};
 
 // Driver serialization macros
 #define	LOCK(pd)			down(&pd->semDevice)
