@@ -46,7 +46,7 @@ module_param(standby_off_timer, long, 0);
 MODULE_PARM_DESC(standby_off_timer,
 		 "Standby-to-poweroff timer [min], must be >0");
 
-static long standby_on_timer = 0;
+static long standby_on_timer;
 module_param(standby_on_timer, long, 0);
 MODULE_PARM_DESC(standby_on_timer,
 		 "Standby-to-wakeup timer [min], overrides standby_off_timer, 0 to disable");
@@ -139,11 +139,10 @@ static void cpu_deinitialize(struct device *dev)
 		InvSetupMX6Q(&data->pDev);
 	} else
 #endif
-		if (cpu_is_imx6s()) {
+		if (cpu_is_imx6s())
 			InvSetupMX6S(&data->pDev);
-		} else {
+		else
 			pr_err("Unknown System CPU\n");
-		}
 }
 
 /**
@@ -176,7 +175,7 @@ static ssize_t charge_state_show(struct device *dev, struct device_attribute *at
 }
 
 static ssize_t fadsuspend_show(struct device *dev, struct device_attribute *attr,
-				 char *buf)
+			       char *buf)
 {
 	return charge_state_show(dev, attr, buf);
 }
@@ -185,7 +184,7 @@ static ssize_t fadsuspend_store(struct device *dev, struct device_attribute *att
 				const char *buf, size_t len)
 {
 	struct faddata *data = dev_get_drvdata(dev);
-	
+
 	if (data->pDev.bSuspend) {
 		if ((len == 1) && (*buf == '1'))
 			data->pDev.bSuspend = 0;
@@ -199,11 +198,9 @@ static ssize_t fadsuspend_store(struct device *dev, struct device_attribute *att
 	return sizeof(char);
 }
 
-static ssize_t charge_state_store(struct device *dev,
-				  struct device_attribute *attr,
+static ssize_t charge_state_store(struct device *dev, struct device_attribute *attr,
 				  const char *buf, size_t len)
 {
-
 	if (!strncmp(buf, "run", strlen("run")))
 		power_state = ON_STATE;
 	else if (!strncmp(buf, "charge", strlen("charge")))
@@ -228,6 +225,7 @@ static ssize_t standby_off_timer_store(struct device *dev,
 {
 	long val;
 	int ret = kstrtol(buf, 10, &val);
+
 	if (ret < 0) {
 		pr_err("FAD: Poweroff timer conversion error\n");
 		return ret;
@@ -257,6 +255,7 @@ static ssize_t standby_on_timer_store(struct device *dev,
 {
 	long val;
 	int ret = kstrtol(buf, 10, &val);
+
 	if (ret < 0) {
 		pr_err("FAD: Wakeup timer conversion error\n");
 		return ret;
@@ -288,7 +287,7 @@ static ssize_t chargersuspend_store(struct device *dev, struct device_attribute 
 			data->pDev.pSetChargerSuspend(&data->pDev, false);
 			ret = len;
 		} else {
-			pr_err ("chargersuspend unknown command... 1/0 accepted\n");
+			pr_err("chargersuspend unknown command... 1/0 accepted\n");
 			ret = -EINVAL;
 		}
 	}
@@ -301,12 +300,12 @@ static ssize_t trigger_poll_show(struct device *dev, struct device_attribute *at
 	return strlen(buf);
 }
 
-static DEVICE_ATTR(standby_off_timer, 0644, standby_off_timer_show, standby_off_timer_store);
-static DEVICE_ATTR(standby_on_timer, 0644, standby_on_timer_show, standby_on_timer_store);
-static DEVICE_ATTR(charge_state, 0644, charge_state_show, charge_state_store);
-static DEVICE_ATTR(fadsuspend, 0644, fadsuspend_show, fadsuspend_store);
+static DEVICE_ATTR_RW(standby_off_timer);
+static DEVICE_ATTR_RW(standby_on_timer);
+static DEVICE_ATTR_RW(charge_state);
+static DEVICE_ATTR_RW(fadsuspend);
 static DEVICE_ATTR(chargersuspend, 0644, NULL, chargersuspend_store);
-static DEVICE_ATTR(trigger_poll, 0444, trigger_poll_show, NULL);
+static DEVICE_ATTR_RO(trigger_poll);
 
 static struct attribute *faddev_sysfs_attrs[] = {
 	&dev_attr_standby_off_timer.attr,
@@ -349,10 +348,9 @@ int get_wake_reason(void)
 			pr_info("FAD: Poweroff after %lu min standby\n", standby_off_timer);
 			orderly_poweroff(1);
 			return UNKNOWN_WAKE;
-		} else {
-			pr_info("FAD: Wakeup after %lu min standby\n", standby_on_timer);
-			return ON_OFF_BUTTON_WAKE;
 		}
+		pr_info("FAD: Wakeup after %lu min standby\n", standby_on_timer);
+		return ON_OFF_BUTTON_WAKE;
 	}
 
 	pr_err("Unknown suspend wake reason");
@@ -396,7 +394,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 	unsigned long jifs;
 	struct faddata *data = container_of(nb, struct faddata, nb);
 	struct device *dev = data->dev;
-	
+
 	switch (val) {
 	case PM_SUSPEND_PREPARE:
 		// Make appcore enter standby
@@ -411,15 +409,15 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 			alarm_init(&data->alarm, ALARM_REALTIME, &fad_standby_timeout);
 			kt = ktime_set(60 * standby_off_timer, 0);
 		}
-		pr_debug("FAD: SUSPEND %lu min\n", (long int)ktime_divns(kt, NSEC_PER_SEC) / 60);
+		pr_debug("FAD: SUSPEND %lu min\n", (long)ktime_divns(kt, NSEC_PER_SEC) / 60);
 		alarm_start_relative(&data->alarm, kt);
 
 		// Wait for appcore
 		jifs = wait_for_completion_timeout(&data->pDev.standbyComplete,
 						   msecs_to_jiffies(10000));
-		if (!jifs) {
+		if (!jifs)
 			pr_debug("FAD: Timeout waiting for standby completion\n");
-		}
+
 		if (data->pDev.bSuspend) {
 			pr_err("FAD: Application suspend failed\n");
 			return NOTIFY_BAD;
@@ -497,7 +495,7 @@ static int fad_probe(struct platform_device *pdev)
 	}
 #endif
 	init_completion(&data->pDev.standbyComplete);
-	standby_off_timer = data->pDev.standbyMinutes;	
+	standby_off_timer = data->pDev.standbyMinutes;
 	return ret;
 
 #ifdef CONFIG_OF
@@ -531,7 +529,7 @@ static int fad_remove(struct platform_device *pdev)
 static int fad_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct faddata *data = platform_get_drvdata(pdev);
-	
+
 	if (data->pDev.suspend)
 		data->pDev.suspend(&data->pDev);
 
@@ -541,7 +539,7 @@ static int fad_suspend(struct platform_device *pdev, pm_message_t state)
 static int fad_resume(struct platform_device *pdev)
 {
 	struct faddata *data = platform_get_drvdata(pdev);
-	
+
 	if (data->pDev.resume)
 		data->pDev.resume(&data->pDev);
 	return 0;
@@ -550,6 +548,7 @@ static int fad_resume(struct platform_device *pdev)
 static void fad_shutdown(struct platform_device *pdev)
 {
 	struct faddata *data = platform_get_drvdata(pdev);
+
 	if (data->pDev.suspend)
 		data->pDev.suspend(&data->pDev);
 
@@ -893,7 +892,7 @@ static long FAD_IOControl(struct file *filep, unsigned int cmd, unsigned long ar
 static unsigned int FadPoll(struct file *filep, poll_table *pt)
 {
 	struct faddata *data = container_of(filep->private_data, struct faddata, miscdev);
-	
+
 	poll_wait(filep, &data->pDev.wq, pt);
 	return (data->pDev.eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
@@ -920,9 +919,9 @@ static ssize_t FadRead(struct file *filep, char *buf, size_t count,
 	if (res < 0)
 		return res;
 	res = copy_to_user((void *)buf,  &data->pDev.eEvent, 1);
-	if (res < 0) {
+	if (res < 0)
 		pr_err("FAD copy-to-user failed: %i\n", res);
-	}
+
 	data->pDev.eEvent = FAD_NO_EVENT;
 	return 1;
 }
