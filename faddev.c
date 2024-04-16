@@ -96,27 +96,29 @@ void *get_suspend_wakup_source(void)
  *
  * @return 0 on success
  */
-static int cpu_initialize(void)
+static int cpu_initialize(struct device *dev)
 {
 	int retval;
+	struct faddata *data = dev_get_drvdata(dev);
+
 #ifdef CONFIG_OF
 	if (of_machine_is_compatible("fsl,imx6dl-ec501"))
-		gpDev->bHasKAKALed = TRUE;
+		data->pDev.bHasKAKALed = TRUE;
 
 	if (of_machine_is_compatible("flir,ninjago") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec101") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec701") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
-		retval = SetupMX6Platform(gpDev);
+		retval = SetupMX6Platform(&data->pDev);
 	} else if (of_machine_is_compatible("fsl,imx6q")) {
-		gpDev->node = of_find_compatible_node(NULL, NULL, "flir,fad");
-		retval = SetupMX6Q(gpDev);
+		data->pDev.node = of_find_compatible_node(NULL, NULL, "flir,fad");
+		retval = SetupMX6Q(&data->pDev);
 	} else
 #endif
 		if (cpu_is_imx6s()) {
-			gpDev->bHasDigitalIO = TRUE;
-			gpDev->bHasKAKALed = TRUE;
-			retval = SetupMX6S(gpDev);
+			data->pDev.bHasDigitalIO = TRUE;
+			data->pDev.bHasKAKALed = TRUE;
+			retval = SetupMX6S(&data->pDev);
 		} else {
 			pr_err("Unknown System CPU\n");
 			retval = -EUNKNOWNCPU;
@@ -128,20 +130,22 @@ static int cpu_initialize(void)
  * CPU Specific Deinitialization
  *
  */
-static void cpu_deinitialize(void)
+static void cpu_deinitialize(struct device *dev)
 {
+	struct faddata *data = dev_get_drvdata(dev);
+
 #ifdef CONFIG_OF
 	if (of_machine_is_compatible("flir,ninjago") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec101") ||
 	    of_machine_is_compatible("fsl,imx6dl-ec501")) {
-		InvSetupMX6Platform(gpDev);
+		InvSetupMX6Platform(&data->pDev);
 	} else if (of_machine_is_compatible("fsl,imx6q")) {
-		of_node_put(gpDev->node);
-		InvSetupMX6Q(gpDev);
+		of_node_put(data->pDev.node);
+		InvSetupMX6Q(&data->pDev);
 	} else
 #endif
 		if (cpu_is_imx6s()) {
-			InvSetupMX6S(gpDev);
+			InvSetupMX6S(&data->pDev);
 		} else {
 			pr_err("Unknown System CPU\n");
 		}
@@ -185,13 +189,15 @@ static ssize_t fadsuspend_show(struct device *dev, struct device_attribute *attr
 static ssize_t fadsuspend_store(struct device *dev, struct device_attribute *attr,
 				const char *buf, size_t len)
 {
-	if (gpDev->bSuspend) {
+	struct faddata *data = dev_get_drvdata(dev);
+	
+	if (data->pDev.bSuspend) {
 		if ((len == 1) && (*buf == '1'))
-			gpDev->bSuspend = 0;
+			data->pDev.bSuspend = 0;
 		else
 			pr_err("App standby prepare fail %d %c\n", len,
 			       (len > 0) ? *buf : ' ');
-		complete(&gpDev->standbyComplete);
+		complete(&data->pDev.standbyComplete);
 	} else
 		pr_debug("FAD: App resume\n");
 
@@ -210,7 +216,7 @@ static ssize_t charge_state_store(struct device *dev,
 	else
 		return -EINVAL;
 
-	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
+	sysfs_notify(&dev->kobj, "control", "fadsuspend");
 	return len;
 }
 
@@ -273,33 +279,30 @@ static ssize_t standby_on_timer_store(struct device *dev,
 }
 
 
-static ssize_t chargersuspend_store(struct device *dev,
-				    struct device_attribute *attr,
+static ssize_t chargersuspend_store(struct device *dev, struct device_attribute *attr,
 				    const char *buf, size_t len)
 {
 	int ret = 0;
+	struct faddata *data = dev_get_drvdata(dev);
 
-	if (gpDev->pSetChargerSuspend != NULL) {
+	if (data->pDev.pSetChargerSuspend != NULL) {
 		if (strncmp(buf, "1", 1) == 0) {
-			gpDev->pSetChargerSuspend(gpDev, true);
+			data->pDev.pSetChargerSuspend(&data->pDev, true);
 			ret = len;
 		} else if (strncmp(buf, "0", 1) == 0) {
-			gpDev->pSetChargerSuspend(gpDev, false);
+			data->pDev.pSetChargerSuspend(&data->pDev, false);
 			ret = len;
 		} else {
-			pr_err
-			    ("chargersuspend unknown command... 1/0 accepted\n");
+			pr_err ("chargersuspend unknown command... 1/0 accepted\n");
 			ret = -EINVAL;
 		}
 	}
 	return ret;
 }
 
-static ssize_t trigger_poll_show(struct device *dev, struct device_attribute *attr,
-				 char *buf)
+static ssize_t trigger_poll_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	strcpy(buf, "X\n");
-
 	return strlen(buf);
 }
 
@@ -370,13 +373,16 @@ int get_wake_reason(void)
 /** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
+	struct platform_device *pdev = gpDev->pLinuxDevice;
+	struct faddata *data = platform_get_drvdata(pdev);
+
 	pr_debug("FAD: Standby timeout, powering off");
 
 	// Switch of backlight as fast as possible (just activated in early resume)
-	if (gpDev->backlight) {
-		gpDev->backlight->props.power = 4;
-		gpDev->backlight->props.brightness = 0;
-		backlight_update_status(gpDev->backlight);
+	if (data->pDev.backlight) {
+		data->pDev.backlight->props.power = 4;
+		data->pDev.backlight->props.brightness = 0;
+		backlight_update_status(data->pDev.backlight);
 	}
 	// Actual switch off will be done in get_wake_reason() when resume finished
 	return ALARMTIMER_NORESTART;
@@ -394,33 +400,34 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 {
 	ktime_t kt;
 	unsigned long jifs;
-
+	struct platform_device *pdev = gpDev->pLinuxDevice;
+	struct faddata *data = platform_get_drvdata(pdev);
+	struct device *dev = data->dev;
+	
 	switch (val) {
 	case PM_SUSPEND_PREPARE:
 		// Make appcore enter standby
 		power_state = SUSPEND_STATE;
-		gpDev->bSuspend = 1;
-		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
+		data->pDev.bSuspend = 1;
+		sysfs_notify(&dev->kobj, "control", "fadsuspend");
 
 		if (standby_on_timer) {
-			alarm_init(gpDev->alarm, ALARM_REALTIME,
-				   &fad_standby_wakeup);
+			alarm_init(data->pDev.alarm, ALARM_REALTIME, &fad_standby_wakeup);
 			kt = ktime_set(60 * standby_on_timer, 0);
 		} else {
-			alarm_init(gpDev->alarm, ALARM_REALTIME,
-				   &fad_standby_timeout);
+			alarm_init(data->pDev.alarm, ALARM_REALTIME, &fad_standby_timeout);
 			kt = ktime_set(60 * standby_off_timer, 0);
 		}
 		pr_debug("FAD: SUSPEND %lu min\n", (long int)ktime_divns(kt, NSEC_PER_SEC) / 60);
-		alarm_start_relative(gpDev->alarm, kt);
+		alarm_start_relative(data->pDev.alarm, kt);
 
 		// Wait for appcore
-		jifs = wait_for_completion_timeout(&gpDev->standbyComplete,
+		jifs = wait_for_completion_timeout(&data->pDev.standbyComplete,
 						   msecs_to_jiffies(10000));
 		if (!jifs) {
 			pr_debug("FAD: Timeout waiting for standby completion\n");
 		}
-		if (gpDev->bSuspend) {
+		if (data->pDev.bSuspend) {
 			pr_err("FAD: Application suspend failed\n");
 			return NOTIFY_BAD;
 		}
@@ -433,9 +440,9 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		else
 			power_state = ON_STATE;
 
-		gpDev->bSuspend = 0;
-		alarm_cancel(gpDev->alarm);
-		sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "fadsuspend");
+		data->pDev.bSuspend = 0;
+		alarm_cancel(data->pDev.alarm);
+		sysfs_notify(&dev->kobj, "control", "fadsuspend");
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -463,16 +470,15 @@ static int fad_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, data);
 	platform_set_drvdata(pdev, data);
 
-	gpDev->alarm = devm_kzalloc(&pdev->dev, sizeof(struct alarm),
-					 GFP_KERNEL);
-	if (!gpDev->alarm) {
+	data->pDev.alarm = devm_kzalloc(dev, sizeof(struct alarm), GFP_KERNEL);
+	if (!data->pDev.alarm) {
 		ret = -ENOMEM;
 		pr_err
-		    ("flirdrv-fad: Error allocating memory for gpDev->alarm, FAD_Init failed\n");
+		    ("flirdrv-fad: Error allocating memory for data->pDev.alarm, FAD_Init failed\n");
 		goto exit;
 	}
 
-	gpDev->pLinuxDevice = pdev;
+	data->pDev.pLinuxDevice = pdev;
 
 	ret = misc_register(&data->miscdev);
 	if (ret) {
@@ -480,45 +486,45 @@ static int fad_probe(struct platform_device *pdev)
 		goto exit;
 	}
 	// initialize this device instance
-	sema_init(&gpDev->semDevice, 1);
-	sema_init(&gpDev->semIOport, 1);
+	sema_init(&data->pDev.semDevice, 1);
+	sema_init(&data->pDev.semIOport, 1);
 
 	// init wait queue
-	init_waitqueue_head(&gpDev->wq);
+	init_waitqueue_head(&data->pDev.wq);
 
 	// Set up CPU specific stuff
-	ret = cpu_initialize();
+	ret = cpu_initialize(dev);
 	if (ret < 0) {
 		pr_err("flirdrv-fad: Failed to initialize CPU\n");
 		goto exit_cpuinitialize;
 	}
 
-	ret = sysfs_create_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
+	ret = sysfs_create_group(&dev->kobj, &faddev_sysfs_attr_grp);
 	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_sysfs_create_group;
 	}
 
 #ifdef CONFIG_OF
-	gpDev->nb.notifier_call = fad_notify;
-	gpDev->nb.priority = 0;
-	ret = register_pm_notifier(&gpDev->nb);
+	data->pDev.nb.notifier_call = fad_notify;
+	data->pDev.nb.priority = 0;
+	ret = register_pm_notifier(&data->pDev.nb);
 	if (ret) {
 		pr_err("FADDEV Error creating sysfs grp control\n");
 		goto exit_register_pm_notifier;
 	}
 #endif
-	init_completion(&gpDev->standbyComplete);
-	standby_off_timer = gpDev->standbyMinutes;	
+	init_completion(&data->pDev.standbyComplete);
+	standby_off_timer = data->pDev.standbyMinutes;	
 	return ret;
 
 #ifdef CONFIG_OF
-	unregister_pm_notifier(&gpDev->nb);
+	unregister_pm_notifier(&data->pDev.nb);
 exit_register_pm_notifier:
 #endif
-	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
+	sysfs_remove_group(&dev->kobj, &faddev_sysfs_attr_grp);
 exit_sysfs_create_group:
-	cpu_deinitialize();
+	cpu_deinitialize(dev);
 exit_cpuinitialize:
 	misc_deregister(&data->miscdev);
 exit:
@@ -527,38 +533,43 @@ exit:
 
 static int fad_remove(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct faddata *data = platform_get_drvdata(pdev);
 
 	dev_dbg(&pdev->dev, "Removing FAD driver\n");
 #ifdef CONFIG_OF
-	unregister_pm_notifier(&gpDev->nb);
+	unregister_pm_notifier(&data->pDev.nb);
 #endif
-	sysfs_remove_group(&pdev->dev.kobj, &faddev_sysfs_attr_grp);
-	cpu_deinitialize();
+	sysfs_remove_group(&dev->kobj, &faddev_sysfs_attr_grp);
+	cpu_deinitialize(dev);
 	misc_deregister(&data->miscdev);
 	return 0;
 }
 
 static int fad_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	if (gpDev->suspend)
-		gpDev->suspend(gpDev);
+	struct faddata *data = platform_get_drvdata(pdev);
+	
+	if (data->pDev.suspend)
+		data->pDev.suspend(&data->pDev);
 
 	return 0;
 }
 
 static int fad_resume(struct platform_device *pdev)
 {
-	if (gpDev->resume)
-		gpDev->resume(gpDev);
-
+	struct faddata *data = platform_get_drvdata(pdev);
+	
+	if (data->pDev.resume)
+		data->pDev.resume(&data->pDev);
 	return 0;
 }
 
 static void fad_shutdown(struct platform_device *pdev)
 {
-	if (gpDev->suspend)
-		gpDev->suspend(gpDev);
+	struct faddata *data = platform_get_drvdata(pdev);
+	if (data->pDev.suspend)
+		data->pDev.suspend(&data->pDev);
 
 }
 
@@ -584,43 +595,42 @@ static struct platform_driver fad_driver = {
  *
  * @return
  */
-static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
+static int DoIOControl(struct device *dev, DWORD Ioctl, PUCHAR pBuf, PUCHAR pUserBuf)
 {
-	int retval = ERROR_INVALID_PARAMETER;
+	struct faddata *data = dev_get_drvdata(dev);
+	int retval;
 	//    static ULONG ulWdogTime = 5000;    // 5 seconds
 	static BOOL bGPSEnable = FALSE;
 
-
 	switch (Ioctl) {
 	case IOCTL_FAD_SET_LASER_STATUS:
-		if (!gpDev->bHasLaser)
+		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->bLaserEnable = ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
-			gpDev->pSetLaserStatus(gpDev, gpDev->bLaserEnable);
+			data->pDev.bLaserEnable = ((PFADDEVIOCTLLASER) pBuf)->bLaserPowerEnabled;
+			data->pDev.pSetLaserStatus(&data->pDev, data->pDev.bLaserEnable);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_GET_LASER_STATUS:
-		if (!gpDev->bHasLaser)
+		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetLaserStatus(gpDev, (PFADDEVIOCTLLASER) pBuf);
+			data->pDev.pGetLaserStatus(&data->pDev, (PFADDEVIOCTLLASER) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_LASER_MODE:
-		if (!gpDev->bHasLaser || !gpDev->pSetLaserMode) {
+		if (!data->pDev.bHasLaser || !data->pDev.pSetLaserMode) {
 			retval = ERROR_NOT_SUPPORTED;
 		} else {
-			gpDev->pSetLaserMode(gpDev,
-					     (PFADDEVIOCTLLASERMODE) pBuf);
+			data->pDev.pSetLaserMode(&data->pDev, (PFADDEVIOCTLLASERMODE) pBuf);
 			retval = ERROR_SUCCESS;
 		}
 		break;
@@ -630,7 +640,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_BUZZER:
-		if (!gpDev->bHasBuzzer)
+		if (!data->pDev.bHasBuzzer)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			FADDEVIOCTLBUZZER *pBuzzerData =
@@ -639,7 +649,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 			if ((pBuzzerData->eState == BUZZER_ON) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
 				// Activate sound
-				gpDev->pSetBuzzerFrequency(pBuzzerData->usFreq,
+				data->pDev.pSetBuzzerFrequency(pBuzzerData->usFreq,
 							   pBuzzerData->ucPWM);
 			}
 			if (pBuzzerData->eState == BUZZER_TIME) {
@@ -650,7 +660,7 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 			if ((pBuzzerData->eState == BUZZER_OFF) ||
 			    (pBuzzerData->eState == BUZZER_TIME)) {
 				// Switch off sound
-				gpDev->pSetBuzzerFrequency(0, 0);
+				data->pDev.pSetBuzzerFrequency(0, 0);
 			}
 			UNLOCK(gpDev);
 			retval = ERROR_SUCCESS;
@@ -658,11 +668,11 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_GET_DIG_IO_STATUS:
-		if (!gpDev->bHasDigitalIO)
+		if (!data->pDev.bHasDigitalIO)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetDigitalStatus(gpDev,
+			data->pDev.pGetDigitalStatus(&data->pDev,
 						 (PFADDEVIOCTLDIGIO) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
@@ -670,55 +680,55 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_GET_LED:
-		if (!gpDev->bHasKAKALed)
+		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetLedState(gpDev, (PFADDEVIOCTLLED) pBuf);
+			data->pDev.pGetLedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_LED:
-		if (!gpDev->bHasKAKALed)
+		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pSetLedState(gpDev, (PFADDEVIOCTLLED) pBuf);
+			data->pDev.pSetLedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_GET_KAKA_LED:
-		if (!gpDev->bHasKAKALed)
+		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetKAKALedState(gpDev, (PFADDEVIOCTLLED) pBuf);
+			data->pDev.pGetKAKALedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KAKA_LED:
-		if (!gpDev->bHasKAKALed)
+		if (!data->pDev.bHasKAKALed)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pSetKAKALedState(gpDev, (PFADDEVIOCTLLED) pBuf);
+			data->pDev.pSetKAKALedState(&data->pDev, (PFADDEVIOCTLLED) pBuf);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_GPS_ENABLE:
-		if (!gpDev->bHasGPS)
+		if (!data->pDev.bHasGPS)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pSetGPSEnable(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled);
+			data->pDev.pSetGPSEnable(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled);
 			bGPSEnable = ((PFADDEVIOCTLGPS) pBuf)->bGPSEnabled;
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
@@ -726,22 +736,22 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_GET_GPS_ENABLE:
-		if (!gpDev->bHasGPS)
+		if (!data->pDev.bHasGPS)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pGetGPSEnable(&(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled));
+			data->pDev.pGetGPSEnable(&(((PFADDEVIOCTLGPS)pBuf)->bGPSEnabled));
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
 		break;
 
 	case IOCTL_FAD_SET_LASER_ACTIVE:
-		if (!gpDev->bHasLaser)
+		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
-			gpDev->pSetLaserActive(gpDev,
+			data->pDev.pSetLaserActive(&data->pDev,
 					       ((FADDEVIOCTLLASERACTIVE *)
 						pBuf)->bLaserActive == TRUE);
 			retval = ERROR_SUCCESS;
@@ -750,12 +760,12 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_GET_LASER_ACTIVE:
-		if (!gpDev->bHasLaser)
+		if (!data->pDev.bHasLaser)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			LOCK(gpDev);
 			((FADDEVIOCTLLASERACTIVE *) pBuf)->bLaserActive =
-			    gpDev->pGetLaserActive(gpDev);
+			    data->pDev.pGetLaserActive(&data->pDev);
 			retval = ERROR_SUCCESS;
 			UNLOCK(gpDev);
 		}
@@ -774,42 +784,42 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_GET_KP_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    gpDev->pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
+			    data->pDev.pGetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
 						       pBuf);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KP_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    gpDev->pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
+			    data->pDev.pSetKeypadBacklight((FADDEVIOCTLBACKLIGHT *)
 						       pBuf);
 		}
 		break;
 
 	case IOCTL_FAD_GET_KP_SUBJ_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    gpDev->pGetKeypadSubjBacklight(gpDev,
+			    data->pDev.pGetKeypadSubjBacklight(&data->pDev,
 							   (FADDEVIOCTLSUBJBACKLIGHT
 							    *) pBuf);
 		}
 		break;
 
 	case IOCTL_FAD_SET_KP_SUBJ_BACKLIGHT:
-		if (!gpDev->bHasKpBacklight)
+		if (!data->pDev.bHasKpBacklight)
 			retval = ERROR_NOT_SUPPORTED;
 		else {
 			retval =
-			    gpDev->pSetKeypadSubjBacklight(gpDev,
+			    data->pDev.pSetKeypadSubjBacklight(&data->pDev,
 							   (FADDEVIOCTLSUBJBACKLIGHT
 							    *) pBuf);
 		}
@@ -835,8 +845,8 @@ static int DoIOControl(PFAD_HW_INDEP_INFO gpDev, DWORD Ioctl, PUCHAR pBuf, PUCHA
 		break;
 
 	case IOCTL_FAD_RELEASE_READ:
-		gpDev->eEvent = FAD_RESET_EVENT;
-		wake_up_interruptible(&gpDev->wq);
+		data->pDev.eEvent = FAD_RESET_EVENT;
+		wake_up_interruptible(&data->pDev.wq);
 		break;
 
 	default:
@@ -876,7 +886,7 @@ static long FAD_IOControl(struct file *filep,
 
 	if (retval == ERROR_SUCCESS) {
 		pr_debug("flirdrv-fad: FAD Ioctl %X\n", cmd);
-		retval = DoIOControl(gpDev, cmd, tmp, (PUCHAR) arg);
+		retval = DoIOControl(&gpDev->pLinuxDevice->dev, cmd, tmp, (PUCHAR) arg);
 		if (retval && (retval != ERROR_NOT_SUPPORTED))
 			pr_err("flirdrv-fad: FAD Ioctl failed: %X %i %d\n", cmd,
 			       retval, _IOC_NR(cmd));
@@ -905,9 +915,12 @@ static long FAD_IOControl(struct file *filep,
  */
 static unsigned int FadPoll(struct file *filp, poll_table *pt)
 {
-	poll_wait(filp, &gpDev->wq, pt);
+	struct platform_device *pdev = gpDev->pLinuxDevice;
+	struct faddata *data = platform_get_drvdata(pdev);
+	
+	poll_wait(filp, &data->pDev.wq, pt);
 
-	return (gpDev->eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
+	return (data->pDev.eEvent != FAD_NO_EVENT) ? (POLLIN | POLLRDNORM) : 0;
 }
 
 /**
@@ -923,19 +936,22 @@ static unsigned int FadPoll(struct file *filp, poll_table *pt)
 static ssize_t FadRead(struct file *filp, char *buf, size_t count,
 		       loff_t *f_pos)
 {
+	struct platform_device *pdev = gpDev->pLinuxDevice;
+	struct faddata *data = platform_get_drvdata(pdev);
+
 	int res;
 
 	if (count < 1)
 		return -EINVAL;
 	res =
-	    wait_event_interruptible(gpDev->wq, gpDev->eEvent != FAD_NO_EVENT);
+	    wait_event_interruptible(data->pDev.wq, data->pDev.eEvent != FAD_NO_EVENT);
 	if (res < 0)
 		return res;
-	res = copy_to_user((void *)buf,  &gpDev->eEvent, 1);
+	res = copy_to_user((void *)buf,  &data->pDev.eEvent, 1);
 	if (res < 0) {
 		pr_err("FAD copy-to-user failed: %i\n", res);
 	}
-	gpDev->eEvent = FAD_NO_EVENT;
+	data->pDev.eEvent = FAD_NO_EVENT;
 	return 1;
 }
 
