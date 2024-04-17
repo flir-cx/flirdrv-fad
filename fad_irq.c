@@ -105,7 +105,7 @@ irqreturn_t fadLaserIST(int irq, void *dev_id)
 irqreturn_t fadTriggerIST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO)dev_id;
-	struct faddata *data = container_of(dev_id, struct faddata, pDev);
+	struct faddata *data = container_of(gpDev, struct faddata, pDev);
 	struct device *dev = data->dev;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)

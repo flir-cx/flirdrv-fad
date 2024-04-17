@@ -92,14 +92,14 @@ BOOL GetLaserPointerActive(PFAD_HW_INDEP_INFO gpDev)
 int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 {
 	int retval = 0;
+	struct faddata *data = container_of(gpDev, struct faddata, pDev);
+	struct device *dev = data->dev;
 
 	gpDev->pSetLaserStatus = setLaserPointerStatus;
 	gpDev->pGetLaserStatus = getLaserPointerStatus;
 	gpDev->pUpdateLaserOutput = updateLaserPointerOutput;
 	gpDev->pSetLaserActive = SetLaserPointerActive;
 	gpDev->pGetLaserActive = GetLaserPointerActive;
-	struct faddata *data = container_of(gpDev, struct faddata, pDev);
-	struct device *dev = data->dev;
 
 #ifdef CONFIG_OF
 
@@ -111,9 +111,7 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 
 	if (gpDev->bHasLaser) {
 		int pin;
-		pin =
-		    of_get_named_gpio_flags(dev->of_node, "laser_on-gpios", 0,
-					    NULL);
+		pin = of_get_named_gpio_flags(dev->of_node, "laser_on-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: LaserON can not be used\n");
 		} else {
@@ -122,16 +120,13 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 			gpio_direction_input(pin);
 			retval = InitLaserIrq(gpDev);
 			if (retval) {
-				pr_err
-				    ("flirdrv-fad: Failed to request Laser IRQ\n");
+				pr_err("flirdrv-fad: Failed to request Laser IRQ\n");
 				retval = -ENOLASERIRQ;
 				goto EXIT_NO_LASERIRQ;
 			}
 		}
 
-		pin =
-		    of_get_named_gpio_flags(dev->of_node, "laser_soft-gpios", 0,
-					    NULL);
+		pin = of_get_named_gpio_flags(dev->of_node, "laser_soft-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Laser Soft On can not be used\n");
 		} else {
@@ -147,8 +142,7 @@ int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev)
 		}
 
 		pin =
-		    of_get_named_gpio_flags(dev->of_node, "laser_switch-gpios",
-					    0, NULL);
+		    of_get_named_gpio_flags(dev->of_node, "laser_switch-gpios", 0, NULL);
 		if (gpio_is_valid(pin) == 0) {
 			pr_err("flirdrv-fad: Laser Switch can not be used\n");
 		} else {
