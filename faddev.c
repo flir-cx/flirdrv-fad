@@ -391,6 +391,7 @@ enum alarmtimer_restart fad_standby_wakeup(struct alarm *alarm, ktime_t kt)
 static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 {
 	ktime_t kt;
+	void *alarm_wakeup_func;
 	unsigned long jifs;
 	struct faddata *data = container_of(nb, struct faddata, nb);
 	struct device *dev = data->dev;
@@ -403,14 +404,13 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 		sysfs_notify(&dev->kobj, "control", "fadsuspend");
 
 		if (standby_on_timer) {
-			alarm_init(&data->alarm, ALARM_REALTIME, &fad_standby_wakeup);
+			alarm_wakeup_func = fad_standby_wakeup;
 			kt = ktime_set(60 * standby_on_timer, 0);
 		} else {
-			alarm_init(&data->alarm, ALARM_REALTIME, &fad_standby_timeout);
+			alarm_wakeup_func = fad_standby_timeout;
 			kt = ktime_set(60 * standby_off_timer, 0);
 		}
 		dev_dbg(dev, "SUSPEND %lu min\n", (long)ktime_divns(kt, NSEC_PER_SEC) / 60);
-		alarm_start_relative(&data->alarm, kt);
 
 		// Wait for appcore
 		jifs = wait_for_completion_timeout(&data->pDev.standbyComplete,
@@ -422,6 +422,9 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 			dev_err(dev, "Application suspend failed\n");
 			return NOTIFY_BAD;
 		}
+
+		alarm_init(&data->alarm, ALARM_REALTIME, alarm_wakeup_func);
+		alarm_start_relative(&data->alarm, kt);
 		return NOTIFY_OK;
 
 	case PM_POST_SUSPEND:
