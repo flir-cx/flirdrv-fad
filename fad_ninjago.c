@@ -119,7 +119,6 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	else
 		retval = SetMotorSleepRegulator(gpDev, true);
 
-	of_property_read_u32(dev->of_node, "standbyMinutes", &gpDev->standbyMinutes);
 	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(dev->of_node, "backlight", 0));
 
 	// Find LEDs

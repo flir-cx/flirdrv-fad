@@ -83,7 +83,6 @@ typedef struct __FAD_HW_INDEP_INFO {
 	int laserMode;
 	int ldmAccuracy;
 	int ldmContinous;
-	int standbyMinutes;
 
 	struct backlight_device *backlight;
 #endif

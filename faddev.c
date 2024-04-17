@@ -497,7 +497,6 @@ static int fad_probe(struct platform_device *pdev)
 	}
 #endif
 	init_completion(&data->pDev.standbyComplete);
-	standby_off_timer = data->pDev.standbyMinutes;
 	return ret;
 
 #ifdef CONFIG_OF
