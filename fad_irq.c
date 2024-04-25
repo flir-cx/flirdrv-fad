@@ -106,6 +106,10 @@ irqreturn_t fadTriggerIST(int irq, void *dev_id)
 {
 	PFAD_HW_INDEP_INFO gpDev = (PFAD_HW_INDEP_INFO) dev_id;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,10,0)
 	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, NULL, "trigger_poll");
+#else
+	sysfs_notify(&gpDev->pLinuxDevice->dev.kobj, "control", "trigger_poll");
+#endif
 	return IRQ_HANDLED;
 }
