@@ -7,11 +7,4 @@
 #else
 #include "mach/mx6.h"
 #endif
-
-/* #if KERNEL_VERSION(4, 9, 0) <= LINUX_VERSION_CODE */
-/* #define cpu_is_imx6s()  false */
-/* #else */
-/* #define cpu_is_imx6s   cpu_is_imx6dl */
-/* #endif */
-
 #endif
