@@ -361,7 +361,7 @@ int get_wake_reason(struct device *dev)
 /** Switch off camera after 6 hours in standby */
 enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 {
-	struct faddata *data = container_of(alarm->data, struct faddata, alarm);
+	struct faddata *data = container_of(alarm, struct faddata, alarm);
 	struct device *dev = data->dev;
 	
 	dev_dbg(dev, "Standby timeout, powering off");
@@ -379,7 +379,7 @@ enum alarmtimer_restart fad_standby_timeout(struct alarm *alarm, ktime_t kt)
 /** Wake up camera after 1 minute in (timed) standby */
 enum alarmtimer_restart fad_standby_wakeup(struct alarm *alarm, ktime_t kt)
 {
-	struct faddata *data = container_of(alarm->data, struct faddata, alarm);
+	struct faddata *data = container_of(alarm, struct faddata, alarm);
 	struct device *dev = data->dev;
 
 	dev_dbg(dev, "Standby wakeup, resuming");
