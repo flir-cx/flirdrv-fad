@@ -32,6 +32,7 @@ int Setup_ec702(PFAD_HW_INDEP_INFO gpDev)
 
 	gpDev->pSetGPSEnable = set_gps_enable;
 	gpDev->pGetGPSEnable = get_gps_enable;
+	gpDev->pSetChargerSuspend = NULL;
 	gpDev->suspend = suspend;
 	gpDev->resume = resume;
 

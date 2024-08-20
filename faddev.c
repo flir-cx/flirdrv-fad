@@ -271,7 +271,7 @@ static ssize_t standby_on_timer_store(struct device *dev, struct device_attribut
 static ssize_t chargersuspend_store(struct device *dev, struct device_attribute *attr,
 				    const char *buf, size_t len)
 {
-	int ret = 0;
+	int ret = len;
 	struct faddata *data = dev_get_drvdata(dev);
 
 	if (data->pDev.pSetChargerSuspend != NULL) {
