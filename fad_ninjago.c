@@ -48,13 +48,13 @@ static BOOL getGPSEnable(BOOL *on);
 
 static int suspend(PFAD_HW_INDEP_INFO gpDev);
 static int resume(PFAD_HW_INDEP_INFO gpDev);
-int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
-int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
+static int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
+static int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL suspend);
 
 // Code
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 {
-	int retval = -1;
+	int retval = 0;
 
 #ifdef CONFIG_OF
 	extern struct list_head leds_list;
@@ -85,6 +85,7 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	of_property_read_u32_index(dev->of_node, "HasDigitalIO", 0, &gpDev->bHasDigitalIO);
 	of_property_read_u32_index(dev->of_node, "hasTrigger", 0, &gpDev->bHasTrigger);
 	of_property_read_u32_index(dev->of_node, "HasKAKALed", 0,&gpDev->bHasKAKALed);
+	of_property_read_u32_index(dev->of_node, "hasFocusModule", 0, &gpDev->bHasFocusModule);
 
 	// Determine what laser device to use
 	if (gpDev->bHasLaser) {
@@ -95,29 +96,33 @@ int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 		}
 	}
 
-	gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
-	if (IS_ERR(gpDev->reg_optics_power))
-		dev_err(dev, "can't get regulator optics_power");
-	else
-		retval = regulator_enable(gpDev->reg_optics_power);
+	// Find regulators related to focusing.
+	if (gpDev->bHasFocusModule) {
 
-	gpDev->reg_position_sensor = devm_regulator_get(dev, "position_sensor");
-	if (IS_ERR(gpDev->reg_position_sensor))
-		dev_err(dev, "can't get regulator position_sensor");
-	else
-		retval = regulator_enable(gpDev->reg_position_sensor);
+		gpDev->reg_optics_power = devm_regulator_get(dev, "optics_power");
+		if (IS_ERR(gpDev->reg_optics_power))
+			dev_err(dev, "can't get regulator optics_power");
+		else
+			retval |= regulator_enable(gpDev->reg_optics_power);
 
-	gpDev->reg_ring_sensor = devm_regulator_get(dev, "ring_sensor");
-	if (IS_ERR(gpDev->reg_ring_sensor))
-		dev_err(dev, "can't get regulator ring_sensor");
-	else
-		retval = regulator_enable(gpDev->reg_ring_sensor);
+		gpDev->reg_position_sensor = devm_regulator_get(dev, "position_sensor");
+		if (IS_ERR(gpDev->reg_position_sensor))
+			dev_err(dev, "can't get regulator position_sensor");
+		else
+			retval |= regulator_enable(gpDev->reg_position_sensor);
 
-	gpDev->reg_motor_sleep = devm_regulator_get(dev, "motor_sleep");
-	if (IS_ERR(gpDev->reg_motor_sleep))
-		dev_err(dev, "can't get regulator motor_sleep");
-	else
-		retval = SetMotorSleepRegulator(gpDev, true);
+		gpDev->reg_ring_sensor = devm_regulator_get(dev, "ring_sensor");
+		if (IS_ERR(gpDev->reg_ring_sensor))
+			dev_err(dev, "can't get regulator ring_sensor");
+		else
+			retval |= regulator_enable(gpDev->reg_ring_sensor);
+
+		gpDev->reg_motor_sleep = devm_regulator_get(dev, "motor_sleep");
+		if (IS_ERR(gpDev->reg_motor_sleep))
+			dev_err(dev, "can't get regulator motor_sleep");
+		else
+			retval |= SetMotorSleepRegulator(gpDev, true);
+	}
 
 	gpDev->backlight = of_find_backlight_by_node(of_parse_phandle(dev->of_node, "backlight", 0));
 
@@ -201,10 +206,12 @@ void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev)
 	if (gpDev->trigger_gpio)
 		free_irq(gpio_to_irq(gpDev->trigger_gpio), gpDev);
 
-	SetMotorSleepRegulator(gpDev, false);
-	regulator_disable(gpDev->reg_ring_sensor);
-	regulator_disable(gpDev->reg_position_sensor);
-	regulator_disable(gpDev->reg_optics_power);
+	if (gpDev->bHasFocusModule) {
+		SetMotorSleepRegulator(gpDev, false);
+		regulator_disable(gpDev->reg_ring_sensor);
+		regulator_disable(gpDev->reg_position_sensor);
+		regulator_disable(gpDev->reg_optics_power);
+	}
 
 	if (gpDev->digin0_gpio)
 		gpio_free(gpDev->digin0_gpio);
@@ -388,29 +395,31 @@ BOOL getGPSEnable(BOOL *on)
 int suspend(PFAD_HW_INDEP_INFO gpDev)
 {
 #ifdef CONFIG_OF
-	int res = 0;
+	if (gpDev->bHasFocusModule) {
+		int res = 0;
 
-	pr_debug("Disbling motor regulator...\n");
-	res = SetMotorSleepRegulator(gpDev, false);
-	if (res)
-		pr_err("Motor regulator disable failed..\n");
-	pr_debug("Disbling ring sensor...\n");
-	if (gpDev->reg_ring_sensor) {
-		res = regulator_disable(gpDev->reg_ring_sensor);
+		pr_debug("Disbling motor regulator...\n");
+		res = SetMotorSleepRegulator(gpDev, false);
 		if (res)
-			pr_err("Ring sensor disable failed..\n");
-	}
-	pr_debug("Disbling position sensor...\n");
-	if (gpDev->reg_position_sensor) {
-		res |= regulator_disable(gpDev->reg_position_sensor);
-		if (res)
-			pr_err("Position sensor disable failed..\n");
-	}
-	pr_debug("Disbling optics power...\n");
-	if (gpDev->reg_optics_power) {
-		res |= regulator_disable(gpDev->reg_optics_power);
-		if (res)
-			pr_err("Optics power disable failed..\n");
+			pr_err("Motor regulator disable failed..\n");
+		pr_debug("Disbling ring sensor...\n");
+		if (gpDev->reg_ring_sensor) {
+			res = regulator_disable(gpDev->reg_ring_sensor);
+			if (res)
+				pr_err("Ring sensor disable failed..\n");
+		}
+		pr_debug("Disbling position sensor...\n");
+		if (gpDev->reg_position_sensor) {
+			res |= regulator_disable(gpDev->reg_position_sensor);
+			if (res)
+				pr_err("Position sensor disable failed..\n");
+		}
+		pr_debug("Disbling optics power...\n");
+		if (gpDev->reg_optics_power) {
+			res |= regulator_disable(gpDev->reg_optics_power);
+			if (res)
+				pr_err("Optics power disable failed..\n");
+		}
 	}
 #endif
 	return 0;
@@ -421,10 +430,12 @@ int resume(PFAD_HW_INDEP_INFO gpDev)
 	int res = 0;
 
 #ifdef CONFIG_OF
-	res = regulator_enable(gpDev->reg_optics_power);
-	res |= regulator_enable(gpDev->reg_position_sensor);
-	res |= regulator_enable(gpDev->reg_ring_sensor);
-	res |= SetMotorSleepRegulator(gpDev, true);
+	if (gpDev->bHasFocusModule) {
+		res = regulator_enable(gpDev->reg_optics_power);
+		res |= regulator_enable(gpDev->reg_position_sensor);
+		res |= regulator_enable(gpDev->reg_ring_sensor);
+		res |= SetMotorSleepRegulator(gpDev, true);
+	}
 #endif
 	return res;
 }
@@ -436,16 +447,18 @@ int resume(PFAD_HW_INDEP_INFO gpDev)
  *
  * @return
  */
-int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend)
+static int SetChargerSuspend(PFAD_HW_INDEP_INFO gpDev, BOOL suspend)
 {
-	int res;
+	int res = 0;
 #ifdef CONFIG_OF
-	res = SetMotorSleepRegulator(gpDev, suspend);
+	if (gpDev->bHasFocusModule) {
+		res = SetMotorSleepRegulator(gpDev, suspend);
+	}
 #endif
 	return res;
 }
 
-int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
+static int SetMotorSleepRegulator(PFAD_HW_INDEP_INFO gpDev, BOOL on)
 {
 	int res = 0;
 #ifdef CONFIG_OF

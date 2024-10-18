@@ -96,6 +96,7 @@ typedef struct __FAD_HW_INDEP_INFO {
 	BOOL bHasKpBacklight;
 	BOOL bHasSoftwareControlledLaser;
 	BOOL bHasTrigger;
+	BOOL bHasFocusModule;
 	BOOL bSuspend;
 
 	 DWORD (*pGetLedState)(struct __FAD_HW_INDEP_INFO *gpDev,
@@ -154,13 +155,11 @@ int SetupMX51(PFAD_HW_INDEP_INFO gpDev);
 int SetupMX6S(PFAD_HW_INDEP_INFO gpDev);
 int SetupMX6Q(PFAD_HW_INDEP_INFO gpDev);
 int SetupMX6Platform(PFAD_HW_INDEP_INFO gpDev);
-int Setup_ec702(PFAD_HW_INDEP_INFO gpDev);
 
 void InvSetupMX51(PFAD_HW_INDEP_INFO gpDev);
 void InvSetupMX6S(PFAD_HW_INDEP_INFO gpDev);
 void InvSetupMX6Q(PFAD_HW_INDEP_INFO gpDev);
 void InvSetupMX6Platform(PFAD_HW_INDEP_INFO gpDev);
-void InvSetup_ec702(PFAD_HW_INDEP_INFO gpDev);
 
 // Function prototypes laser pointer
 int SetupLaserPointer(PFAD_HW_INDEP_INFO gpDev);
