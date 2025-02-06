@@ -417,7 +417,7 @@ static int fad_notify(struct notifier_block *nb, unsigned long val, void *ign)
 
 		if (data->pDev.bSuspend) {
 			dev_err(dev, "Application suspend failed\n");
-			return NOTIFY_BAD;
+			//  return NOTIFY_BAD;
 		}
 
 		alarm_init(&data->alarm, ALARM_REALTIME, alarm_wakeup_func);
